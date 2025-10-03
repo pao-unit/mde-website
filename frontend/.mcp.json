@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "chakra-ui": {
+      "type": "stdio",
+      "command": "pnpx",
+      "args": [
+        "@chakra-ui/react-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

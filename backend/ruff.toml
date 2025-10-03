@@ -1,0 +1,3 @@
+exclude = ["MDE/**"]
+line-length = 100
+lint.extend-select = ["I"]
