@@ -14,3 +14,5 @@ The backend is built with Python, FastAPI and Pydantic.
 2. Run the backend server using `cd backend && uv run fastapi dev main.py --reload`
 3. Generate the OpenAPI client code using `cd frontend && pnpm generate`
 4. Run the frontend server using `pnpm dev`
+
+See also @backend/README.md and @frontend/README.md for more details.

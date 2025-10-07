@@ -16,9 +16,9 @@ export default function LinePlot({
 	width = 640,
 	height = 400,
 	marginTop = 20,
-	marginRight = 30,
-	marginBottom = 20,
-	marginLeft = 20,
+	marginRight = 20,
+	marginBottom = 30,
+	marginLeft = 60,
 }: Props) {
 	const gx = useRef<SVGGElement>(null);
 	const gy = useRef<SVGGElement>(null);
@@ -26,10 +26,7 @@ export default function LinePlot({
 	const domainX = [0, data.length - 1];
 	const x = d3.scaleLinear(domainX, [marginLeft, width - marginRight]);
 	const domainY = d3.extent(data);
-	const y = d3.scaleLinear(
-		[domainY[0] ?? 0, domainY[1] ?? 1],
-		[height - marginBottom, marginTop],
-	);
+	const y = d3.scaleLinear([domainY[0] ?? 0, domainY[1] ?? 1], [height - marginBottom, marginTop]);
 
 	const line = d3.line((_, i) => x(i), y);
 	useEffect(() => {
@@ -43,16 +40,13 @@ export default function LinePlot({
 
 	return (
 		<svg width={width} height={height}>
+			<title>Line Plot</title>
 			<g ref={gx} transform={`translate(0,${height - marginBottom})`} />
 			<g ref={gy} transform={`translate(${marginLeft},0)`} />
-			<path
-				fill="none"
-				stroke="currentColor"
-				strokeWidth="1.5"
-				d={line(data) ?? undefined}
-			/>
+			<path fill="none" stroke="currentColor" strokeWidth="1.5" d={line(data) ?? undefined} />
 			<g fill="white" stroke="currentColor" strokeWidth="1.5">
 				{data.map((d, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: this is fine
 					<circle key={i} cx={x(i)} cy={y(d)} r="2.5" />
 				))}
 			</g>

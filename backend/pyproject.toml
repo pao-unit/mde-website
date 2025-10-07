@@ -9,6 +9,9 @@ dependencies = [
     "MDE",
     "numpy>=2.3.3",
     "pandas>=2.3.3",
+    "pyarrow>=21.0.0",
+    "python-multipart>=0.0.20",
+    "typeid-python>=0.3.2",
 ]
 
 [dependency-groups]

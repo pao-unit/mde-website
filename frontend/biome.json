@@ -7,17 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": [
-			"**/src/**/*",
-			"**/.vscode/**/*",
-			"**/index.html",
-			"**/vite.config.js",
-			"!**/src/routeTree.gen.ts"
-		]
+		"includes": ["src/**/*", "scripts/**/*", ".vscode/**/*", "index.html", "vite.config.js", "!**/src/routeTree.gen.ts"]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "tab",
+		"lineWidth": 130
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"linter": {

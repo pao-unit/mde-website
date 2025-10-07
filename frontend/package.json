@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "tsgo -p . && vite build",
     "serve": "vite preview",
-    "generate": "openapi-typescript http://localhost:8000/openapi.json -o src/libs/api/openapi.gen.ts",
+    "generate": "tsx ./scripts/generate-openapi-types.ts",
     "test": "vitest run",
     "check": "biome check --write --unsafe",
     "typecheck": "tsgo -p ."
@@ -15,6 +15,7 @@
     "@chakra-ui/react": "^3.27.0",
     "@react-three/fiber": "^9.3.0",
     "@tanstack/react-devtools": "^0.7.1",
+    "@tanstack/react-form": "^1.23.5",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-query-devtools": "^5.90.2",
     "@tanstack/react-router": "^1.132.31",
@@ -29,6 +30,9 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
     "@chakra-ui/react-mcp": "^2.1.0",
+    "@iconify-json/material-symbols": "^1.2.34",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
     "@tanstack/router-plugin": "^1.132.31",
     "@types/d3": "^7.4.3",
     "@types/node": "^24.6.2",
@@ -38,6 +42,9 @@
     "@typescript/native-preview": "7.0.0-dev.20251002.1",
     "@vitejs/plugin-react": "^5.0.4",
     "openapi-typescript": "^7.9.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "unplugin-icons": "^22.4.2",
     "vite": "npm:rolldown-vite@latest",
     "vitest": "^3.2.4"
   }
