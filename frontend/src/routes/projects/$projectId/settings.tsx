@@ -7,8 +7,6 @@ import type { ColumnSummary } from "../../../components/projects/types.ts";
 import { $api } from "../../../libs/api/index.ts";
 
 const DEFAULT_D = 6;
-const DEFAULT_LIB_RANGE: [number, number] = [1, 300];
-const DEFAULT_PRED_RANGE: [number, number] = [301, 600];
 
 export const Route = createFileRoute("/projects/$projectId/settings")({
 	component: SettingsPage,
@@ -52,11 +50,13 @@ function SettingsPage() {
 	const [target, setTarget] = useState<string>(existingSettings?.target ?? "");
 	const [removeColumns, setRemoveColumns] = useState<string[]>(existingSettings?.removeColumns ?? []);
 	const [dimensions, setDimensions] = useState<number>(existingSettings?.D ?? DEFAULT_D);
+
+	const defaultLibSize = dataset?.rowCount ? Math.round(dataset.rowCount * 0.8) : 1;
 	const [libRange, setLibRange] = useState<[number, number]>(
-		existingSettings ? [existingSettings.lib[0], existingSettings.lib[1]] : DEFAULT_LIB_RANGE,
+		existingSettings ? [existingSettings.lib[0], existingSettings.lib[1]] : [1, defaultLibSize]
 	);
 	const [predRange, setPredRange] = useState<[number, number]>(
-		existingSettings ? [existingSettings.pred[0], existingSettings.pred[1]] : DEFAULT_PRED_RANGE,
+		existingSettings ? [existingSettings.pred[0], existingSettings.pred[1]] : [defaultLibSize + 1, dataset?.rowCount ?? 2],
 	);
 	const [selectedVariable, setSelectedVariable] = useState<string | null>(existingSettings?.target ?? null);
 

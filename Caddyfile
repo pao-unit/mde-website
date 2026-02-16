@@ -1,0 +1,10 @@
+:80 {
+	handle /api/* {
+		reverse_proxy localhost:8000
+	}
+	handle {
+		root * ./frontend/dist
+		try_files {path} /index.html
+		file_server
+	}
+}

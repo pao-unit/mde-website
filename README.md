@@ -7,7 +7,7 @@ The frontend is built with React, TypeScript, Vite, TanStack Router, TanStack Qu
 Data visualization is done using D3.js (for 2D) and React Three Fiber (for 3D).
 
 ## Backend
-The backend is built with Python, FastAPI and Pydantic.
+The backend is built with Python (uv), FastAPI and Pydantic.
 
 ## Development
 1. Implement API in the backend
