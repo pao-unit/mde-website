@@ -3,11 +3,12 @@ name = "backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
+    "edmkit>=0.0.7",
+    "edmkit-search>=0.0.1a1",
     "fastapi[standard]>=0.118.0",
-    "MDE",
-    "numpy>=2.3.3",
+    "numpy>=2.4.4",
     "pandas>=2.3.3",
     "pyarrow>=21.0.0",
     "python-multipart>=0.0.20",
@@ -17,8 +18,5 @@ dependencies = [
 [dependency-groups]
 dev = ["ruff>=0.13.3", "ty>=0.0.1a21"]
 
-[tool.uv.workspace]
-members = ["MDE"]
-
-[tool.uv.sources]
-MDE = { workspace = true }
+[tool.uv]
+prerelease = "allow"

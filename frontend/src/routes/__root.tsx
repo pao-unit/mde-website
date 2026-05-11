@@ -23,21 +23,23 @@ function Root() {
 			<Flex flex="1" overflow="hidden" minH={0} direction="column">
 				<Outlet />
 			</Flex>
-			<TanStackDevtools
-				config={{
-					position: "bottom-left",
-				}}
-				plugins={[
-					{
-						name: "Tanstack Router",
-						render: <TanStackRouterDevtoolsPanel />,
-					},
-					{
-						name: "Tanstack Query",
-						render: <ReactQueryDevtoolsPanel />,
-					},
-				]}
-			/>
+			{import.meta.env.DEV && (
+				<TanStackDevtools
+					config={{
+						position: "bottom-left",
+					}}
+					plugins={[
+						{
+							name: "Tanstack Router",
+							render: <TanStackRouterDevtoolsPanel />,
+						},
+						{
+							name: "Tanstack Query",
+							render: <ReactQueryDevtoolsPanel />,
+						},
+					]}
+				/>
+			)}
 		</Flex>
 	);
 }

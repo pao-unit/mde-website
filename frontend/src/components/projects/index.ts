@@ -1,5 +1,7 @@
 export { AnalysisSettingsPanel } from "./AnalysisSettingsPanel.tsx";
+export { BestStepPlotPanel } from "./BestStepPlotPanel.tsx";
 export { DatasetSummaryPanel } from "./DatasetSummaryPanel.tsx";
+export { FoldSummaryPanel } from "./FoldSummaryPanel.tsx";
 export { ProjectEmptyState } from "./ProjectEmptyState.tsx";
 export { ProjectInProgressState } from "./ProjectInProgressState.tsx";
 export { ProjectSettingsSummary } from "./ProjectSettingsSummary.tsx";

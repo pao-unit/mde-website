@@ -13,7 +13,7 @@ export function ProjectInProgressState({ projectId }: ProjectInProgressStateProp
 					Analysis in progress
 				</Text>
 				<Text color="fg.muted">
-					We are executing the MDE workflow with your settings. This can take a few minutes depending on dataset size.
+					We are running greedy variable selection with your settings. This can take a few minutes depending on dataset size.
 				</Text>
 			</Stack>
 			<Stack direction="row" align="center" gap={3} color="fg.muted">

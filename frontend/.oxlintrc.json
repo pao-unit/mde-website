@@ -1,0 +1,34 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import", "promise"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error"
+	},
+	"options": {
+		"typeAware": true,
+		"typeCheck": true
+	},
+	"env": {
+		"browser": true,
+		"es2024": true
+	},
+	"settings": {
+		"react": {
+			"version": "19.2.0"
+		}
+	},
+	"rules": {
+		"react/react-in-jsx-scope": "off",
+		"jsx-a11y/prefer-tag-over-role": "off"
+	},
+	"ignorePatterns": ["dist", "node_modules", "src/routeTree.gen.ts", "src/libs/api/openapi.gen.ts"],
+	"overrides": [
+		{
+			"files": ["scripts/**/*.{ts,tsx,js,mjs,cjs}", "vite.config.ts", "vitest.config.ts"],
+			"env": {
+				"node": true
+			}
+		}
+	]
+}

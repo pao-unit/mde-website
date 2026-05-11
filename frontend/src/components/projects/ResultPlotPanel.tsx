@@ -1,5 +1,5 @@
 import { Box, Stack, Text } from "@chakra-ui/react";
-import LinePlot from "../LinePlot.tsx";
+import OverlayPlot from "../OverlayPlot.tsx";
 import type { ProjectResult } from "./types.ts";
 
 interface ResultPlotPanelProps {
@@ -7,30 +7,55 @@ interface ResultPlotPanelProps {
 }
 
 export function ResultPlotPanel({ result }: ResultPlotPanelProps) {
-	const entries = Object.entries(result);
+	const steps = result.steps;
 
-	if (entries.length === 0) {
+	if (steps.length === 0) {
 		return (
 			<Box bg="white" borderRadius="xl" boxShadow="sm" p={6}>
 				<Stack gap={2}>
 					<Text as="h3" fontSize="lg" fontWeight="semibold">
-						Cross mapping (rho)
+						Prediction skill (rho)
 					</Text>
-					<Text color="fg.muted">No result entries available yet.</Text>
+					<Text color="fg.muted">No variables were selected.</Text>
 				</Stack>
 			</Box>
 		);
 	}
 
+	const stepIndices = steps.map((_, i) => i + 1);
+	const innerSeries = {
+		name: "Training (prediction) rho",
+		color: "#0EA5E9",
+		data: steps.map((s) => s.rhoPrediction),
+		dashed: true,
+	};
+	const outerSeries = {
+		name: "Holdout rho",
+		color: "#1E3A8A",
+		data: steps.map((s) => s.rhoHoldout),
+	};
+
+	const width = Math.max(640, steps.length * 64);
+
 	return (
 		<Box bg="white" borderRadius="xl" boxShadow="sm" p={6}>
 			<Stack gap={4}>
 				<Text as="h3" fontSize="lg" fontWeight="semibold">
-					Cross mapping (rho)
+					Prediction skill across greedy steps
 				</Text>
-				<Text color="fg.muted">Change of cross mapping skill over additional dimensions.</Text>
+				<Text color="fg.muted">
+					Prediction-range rho drives variable selection; holdout-range rho measures generalisation on the held-out window.
+				</Text>
 				<Box overflowX="auto">
-					<LinePlot data={entries.map(([, value]) => value)} width={Math.max(640, entries.length * 32)} height={320} />
+					<OverlayPlot
+						series={[innerSeries, outerSeries]}
+						xValues={stepIndices}
+						width={width}
+						height={320}
+						xLabel="Greedy step"
+						yLabel="rho"
+						showPoints
+					/>
 				</Box>
 			</Stack>
 		</Box>

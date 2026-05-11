@@ -1,58 +1,63 @@
-import { useCallback } from "react";
-
 import { Box, Checkbox, CheckboxGroup, Input, Stack, Text } from "@chakra-ui/react";
+import { FoldRangeSlider } from "./FoldRangeSlider.tsx";
 
 interface AnalysisSettingsPanelProps {
 	columnNames: string[];
-	target: string;
-	onTargetChange: (value: string) => void;
-	dimensions: number;
-	onDimensionsChange: (value: number) => void;
-	removeColumns: string[];
-	onToggleIgnore: (column: string, checked: boolean) => void;
-	libRange: [number, number];
+	totalPoints: number;
+	targets: string[];
+	onTargetsChange: (values: string[]) => void;
+	maxVariables: number;
+	onMaxVariablesChange: (value: number) => void;
+	excludeColumns: string[];
+	onToggleExclude: (column: string, checked: boolean) => void;
+	libraryRange: [number, number];
 	onLibraryRangeChange: (range: [number, number]) => void;
-	predRange: [number, number];
+	predictionRange: [number, number];
 	onPredictionRangeChange: (range: [number, number]) => void;
+	holdoutRange: [number, number];
+	onHoldoutRangeChange: (range: [number, number]) => void;
+	seed: number;
+	onSeedChange: (value: number) => void;
 }
 
 export function AnalysisSettingsPanel({
 	columnNames,
-	target,
-	onTargetChange,
-	dimensions,
-	onDimensionsChange,
-	removeColumns,
-	onToggleIgnore,
-	libRange,
+	totalPoints,
+	targets,
+	onTargetsChange,
+	maxVariables,
+	onMaxVariablesChange,
+	excludeColumns,
+	onToggleExclude,
+	libraryRange,
 	onLibraryRangeChange,
-	predRange,
+	predictionRange,
 	onPredictionRangeChange,
+	holdoutRange,
+	onHoldoutRangeChange,
+	seed,
+	onSeedChange,
 }: AnalysisSettingsPanelProps) {
-	const [libStart, libEnd] = libRange;
-	const [predStart, predEnd] = predRange;
-	const ignoreValues = removeColumns.filter((name) => name !== target);
+	const targetSet = new Set(targets);
+	const excludeValues = excludeColumns.filter((name) => !targetSet.has(name));
 
-	const handleIgnoreChange = useCallback(
-		(values: string[]) => {
-			const sanitizedValues = values.filter((value) => value !== target);
-			const previous = new Set(removeColumns.filter((name) => name !== target));
-			const next = new Set(sanitizedValues);
+	const handleExcludeChange = (values: string[]) => {
+		const sanitizedValues = values.filter((value) => !targetSet.has(value));
+		const previous = new Set(excludeColumns.filter((name) => !targetSet.has(name)));
+		const next = new Set(sanitizedValues);
 
-			sanitizedValues.forEach((value) => {
-				if (!previous.has(value)) {
-					onToggleIgnore(value, true);
-				}
-			});
+		for (const value of sanitizedValues) {
+			if (!previous.has(value)) {
+				onToggleExclude(value, true);
+			}
+		}
 
-			previous.forEach((value) => {
-				if (!next.has(value)) {
-					onToggleIgnore(value, false);
-				}
-			});
-		},
-		[removeColumns, onToggleIgnore, target],
-	);
+		for (const value of previous) {
+			if (!next.has(value)) {
+				onToggleExclude(value, false);
+			}
+		}
+	};
 
 	return (
 		<Box bg="white" borderRadius="xl" boxShadow="sm" p={6}>
@@ -61,60 +66,18 @@ export function AnalysisSettingsPanel({
 					<Text as="h3" fontSize="lg" fontWeight="semibold">
 						Analysis settings
 					</Text>
-					<Text color="fg.muted">These parameters control how the embedding is constructed.</Text>
-				</Stack>
-
-				<Stack direction={{ base: "column", md: "row" }} gap={4}>
-					<Stack flex="1" gap={2}>
-						<Text fontWeight="medium">Target variable</Text>
-						<select
-							value={target}
-							onChange={(event) => onTargetChange(event.target.value)}
-							style={{
-								padding: "0.6rem",
-								borderRadius: "0.5rem",
-								borderWidth: "1px",
-								borderStyle: "solid",
-								borderColor: "var(--chakra-colors-gray-200)",
-							}}
-						>
-							<option value="" disabled>
-								Select target
-							</option>
-							{columnNames.map((name) => (
-								<option key={name} value={name}>
-									{name}
-								</option>
-							))}
-						</select>
-						<Text fontSize="sm" color="fg.muted">
-							Optimises prediction skill for the selected variable.
-						</Text>
-					</Stack>
-
-					<Stack flex="1" gap={2}>
-						<Text fontWeight="medium">Embedding dimensions (D)</Text>
-						<Input
-							type="number"
-							min={1}
-							value={Number.isFinite(dimensions) ? dimensions : ""}
-							onChange={(event) => {
-								const value = Number.parseInt(event.target.value, 10);
-								onDimensionsChange(Number.isNaN(value) ? 1 : Math.max(1, value));
-							}}
-						/>
-						<Text fontSize="sm" color="fg.muted">
-							Maximum embedding dimensions explored during optimisation.
-						</Text>
-					</Stack>
+					<Text color="fg.muted">
+						Greedy forward selection scores candidates on the Training (prediction) range. The Holdout range is reserved for final
+						evaluation.
+					</Text>
 				</Stack>
 
 				<Stack gap={2}>
-					<Text fontWeight="medium">Ignore variables during optimisation</Text>
-					<CheckboxGroup value={ignoreValues} onValueChange={handleIgnoreChange}>
+					<Text fontWeight="medium">Target variables</Text>
+					<CheckboxGroup value={targets} onValueChange={onTargetsChange}>
 						<Stack gap={2} maxH="200px" overflowY="auto">
 							{columnNames.map((name) => (
-								<Checkbox.Root key={name} value={name} disabled={name === target}>
+								<Checkbox.Root key={name} value={name}>
 									<Checkbox.HiddenInput />
 									<Checkbox.Control />
 									<Checkbox.Label>{name}</Checkbox.Label>
@@ -123,64 +86,74 @@ export function AnalysisSettingsPanel({
 						</Stack>
 					</CheckboxGroup>
 					<Text fontSize="sm" color="fg.muted">
-						Select any variables that should be excluded from optimisation.
+						Predicted jointly. Targets are automatically excluded from the candidate pool.
 					</Text>
 				</Stack>
 
-				<Stack direction={{ base: "column", md: "row" }} gap={4}>
-					<Stack flex="1" gap={2}>
-						<Text fontWeight="medium">Library range</Text>
-						<Stack direction="row" gap={3}>
-							<Input
-								type="number"
-								min={1}
-								value={libStart}
-								onChange={(event) => {
-									const value = Math.max(1, Math.floor(Number(event.target.value) || 1));
-									onLibraryRangeChange([value, Math.max(value + 1, libEnd)]);
-								}}
-							/>
-							<Input
-								type="number"
-								min={libStart + 1}
-								value={libEnd}
-								onChange={(event) => {
-									const value = Math.floor(Number(event.target.value) || libStart + 1);
-									onLibraryRangeChange([libStart, Math.max(libStart + 1, value)]);
-								}}
-							/>
-						</Stack>
-						<Text fontSize="sm" color="fg.muted">
-							Inclusive start and end for the library segment.
-						</Text>
-					</Stack>
+				<Stack gap={2}>
+					<Text fontWeight="medium">Maximum variables to select</Text>
+					<Input
+						type="number"
+						min={1}
+						value={Number.isFinite(maxVariables) ? maxVariables : ""}
+						onChange={(event) => {
+							const value = Number.parseInt(event.target.value, 10);
+							onMaxVariablesChange(Number.isNaN(value) ? 1 : Math.max(1, value));
+						}}
+					/>
+					<Text fontSize="sm" color="fg.muted">
+						Greedy search stops once this many variables have been chosen.
+					</Text>
+				</Stack>
 
-					<Stack flex="1" gap={2}>
-						<Text fontWeight="medium">Prediction range</Text>
-						<Stack direction="row" gap={3}>
-							<Input
-								type="number"
-								min={1}
-								value={predStart}
-								onChange={(event) => {
-									const value = Math.max(1, Math.floor(Number(event.target.value) || 1));
-									onPredictionRangeChange([value, Math.max(value + 1, predEnd)]);
-								}}
-							/>
-							<Input
-								type="number"
-								min={predStart + 1}
-								value={predEnd}
-								onChange={(event) => {
-									const value = Math.floor(Number(event.target.value) || predStart + 1);
-									onPredictionRangeChange([predStart, Math.max(predStart + 1, value)]);
-								}}
-							/>
+				<Stack gap={2}>
+					<Text fontWeight="medium">Exclude additional variables</Text>
+					<CheckboxGroup value={excludeValues} onValueChange={handleExcludeChange}>
+						<Stack gap={2} maxH="200px" overflowY="auto">
+							{columnNames.map((name) => (
+								<Checkbox.Root key={name} value={name} disabled={targetSet.has(name)}>
+									<Checkbox.HiddenInput />
+									<Checkbox.Control />
+									<Checkbox.Label>
+										{name}
+										{targetSet.has(name) ? " (target — auto-excluded)" : null}
+									</Checkbox.Label>
+								</Checkbox.Root>
+							))}
 						</Stack>
-						<Text fontSize="sm" color="fg.muted">
-							Inclusive start and end for the prediction segment.
-						</Text>
-					</Stack>
+					</CheckboxGroup>
+				</Stack>
+
+				<Stack gap={2}>
+					<Text fontWeight="medium">Fold layout</Text>
+					<FoldRangeSlider
+						totalPoints={totalPoints}
+						libraryRange={libraryRange}
+						predictionRange={predictionRange}
+						holdoutRange={holdoutRange}
+						onLibraryRangeChange={onLibraryRangeChange}
+						onPredictionRangeChange={onPredictionRangeChange}
+						onHoldoutRangeChange={onHoldoutRangeChange}
+					/>
+					<Text fontSize="sm" color="fg.muted">
+						1-indexed inclusive point ranges. Library is the simplex library throughout. Prediction is the held-out target during
+						greedy variable selection. Holdout is the final out-of-sample test for the actual-vs-predicted plot.
+					</Text>
+				</Stack>
+
+				<Stack gap={2}>
+					<Text fontWeight="medium">Random seed</Text>
+					<Input
+						type="number"
+						value={seed}
+						onChange={(event) => {
+							const value = Number.parseInt(event.target.value, 10);
+							onSeedChange(Number.isNaN(value) ? 0 : value);
+						}}
+					/>
+					<Text fontSize="sm" color="fg.muted">
+						Ensures runs are reproducible. Greedy ties are broken by per-step randomness.
+					</Text>
 				</Stack>
 			</Stack>
 		</Box>

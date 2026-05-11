@@ -1,79 +1,94 @@
-import { Grid, Heading, Skeleton, Stack, Text } from "@chakra-ui/react";
-import { createFileRoute } from "@tanstack/react-router";
-import {
-	ProjectEmptyState,
-	ProjectInProgressState,
-	ProjectSettingsSummary,
-	ResultPlotPanel,
-	ResultTable,
-} from "../../../components/projects/index.ts";
-import { $api } from "../../../libs/api/index.ts";
+import { Button } from "@chakra-ui/react";
+import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
+import { ProjectDashboard, ProjectResultsPage, type ProjectWorkflowStepId } from "../../../features/projects/components/index.ts";
+import { deriveProjectWorkflow, isAnalysisActive } from "../../../features/projects/model/index.ts";
+import { $api, getErrorMessage } from "../../../shared/api/client.ts";
 
 export const Route = createFileRoute("/projects/$projectId/")({
 	component: ProjectPage,
 });
 
 function ProjectPage() {
+	const navigate = Route.useNavigate();
 	const { projectId } = Route.useParams();
 
-	const {
-		data: project,
-		isPending,
-		isError,
-	} = $api.useQuery(
+	const projectQuery = $api.useQuery(
 		"get",
 		"/api/projects/{project_id}",
-		{
-			params: { path: { project_id: projectId } },
-		},
+		{ params: { path: { project_id: projectId } } },
 		{
 			refetchInterval(query) {
-				return query.state.data?.result ? false : 10_000;
+				const status = deriveProjectWorkflow(query.state.data);
+				return isAnalysisActive(status) ? 5_000 : false;
 			},
 		},
 	);
 
-	if (isPending) {
+	const datasetQuery = $api.useQuery(
+		"get",
+		"/api/projects/{project_id}/dataset",
+		{ params: { path: { project_id: projectId } } },
+		{
+			enabled: Boolean(projectQuery.data),
+			staleTime: 5 * 60_000,
+		},
+	);
+
+	const project = projectQuery.data;
+	const latestRun = project?.latestRun ?? null;
+	const status = deriveProjectWorkflow(project);
+	const result = latestRun?.result ?? null;
+	const settings = latestRun?.settings ?? null;
+
+	const goToStep = (step: ProjectWorkflowStepId) => {
+		if (step === "settings" || step === "dataset") {
+			void navigate({ to: "/projects/$projectId/settings", params: { projectId } });
+		}
+	};
+
+	const configureAction = (
+		<Button asChild colorPalette="blue">
+			<RouterLink to="/projects/$projectId/settings" params={{ projectId }}>
+				{settings ? "Change settings" : "Configure settings"}
+			</RouterLink>
+		</Button>
+	);
+
+	if (projectQuery.isPending) {
+		return <ProjectDashboard isLoading />;
+	}
+
+	if (projectQuery.isError || !project) {
+		return <ProjectDashboard error={getErrorMessage(projectQuery.error)} onRetry={() => void projectQuery.refetch()} />;
+	}
+
+	if (result || status === "queued" || status === "running" || status === "failed") {
 		return (
-			<Stack gap={6}>
-				<Skeleton width="320px" height="32px" borderRadius="md" />
-				<Skeleton height="200px" borderRadius="md" />
-				<Skeleton height="320px" borderRadius="md" />
-			</Stack>
+			<ProjectResultsPage
+				filename={project.filename}
+				settings={settings}
+				result={result}
+				status={status}
+				error={status === "failed" ? latestRun?.error : null}
+				primaryAction={status === "failed" ? configureAction : undefined}
+				secondaryAction={status === "completed" ? configureAction : undefined}
+				onStepSelect={goToStep}
+			/>
 		);
-	}
-
-	if (isError || !project) {
-		return (
-			<Stack gap={3} bg="red.50" borderRadius="lg" borderWidth="1px" borderColor="red.200" p={6}>
-				<Text color="red.700">Unable to load project information right now.</Text>
-			</Stack>
-		);
-	}
-
-	if (!project.settings) {
-		return <ProjectEmptyState projectId={projectId} filename={project.filename} />;
-	}
-
-	if (!project.result) {
-		return <ProjectInProgressState projectId={projectId} />;
 	}
 
 	return (
-		<Stack gap={8}>
-			<Stack gap={3}>
-				<Heading size="lg">Analysis results</Heading>
-				<Text color="fg.muted">
-					Review the convergence metrics and embedding performance. You can adjust settings and rerun the analysis at any time.
-				</Text>
-			</Stack>
-			<Grid templateColumns={{ base: "1fr", xl: "320px 1fr" }} gap={8} alignItems="start">
-				<ProjectSettingsSummary projectId={projectId} filename={project.filename} settings={project.settings} />
-				<Stack gap={6}>
-					<ResultPlotPanel result={project.result} />
-					<ResultTable result={project.result} />
-				</Stack>
-			</Grid>
-		</Stack>
+		<ProjectDashboard
+			filename={project.filename}
+			dataset={datasetQuery.data}
+			settings={settings}
+			result={result}
+			status={status}
+			isLoading={datasetQuery.isPending}
+			error={datasetQuery.isError ? getErrorMessage(datasetQuery.error) : null}
+			onRetry={() => void datasetQuery.refetch()}
+			primaryAction={configureAction}
+			onStepSelect={goToStep}
+		/>
 	);
 }

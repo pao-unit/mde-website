@@ -8,9 +8,11 @@ const NULL = ts.factory.createLiteralTypeNode(ts.factory.createNull()); // `null
 
 const ast = await openapiTS(new URL("http://localhost:8000/openapi.json"), {
 	transform(schemaObject, _metadata) {
-		if (schemaObject.format === "binary") {
+		const contentMediaType = "contentMediaType" in schemaObject ? schemaObject.contentMediaType : undefined;
+		if (schemaObject.format === "binary" || contentMediaType === "application/octet-stream") {
 			return schemaObject.nullable ? ts.factory.createUnionTypeNode([BLOB, NULL]) : BLOB;
 		}
+		return undefined;
 	},
 });
 const contents = astToString(ast);

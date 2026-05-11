@@ -1,4 +1,4 @@
-Welcome to your new TanStack app! 
+Welcome to your new TanStack app!
 
 # Getting Started
 
@@ -29,13 +29,12 @@ pnpm test
 
 This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
 
-
 ```bash
 pnpm check
 ```
 
-
 ## Routing
+
 This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
 
 ### Adding A Route
@@ -71,31 +70,30 @@ In the File Based Routing setup the layout is located in `src/routes/__root.tsx`
 Here is an example layout that includes a header:
 
 ```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { Link } from "@tanstack/react-router";
 
 export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
+	component: () => (
+		<>
+			<header>
+				<nav>
+					<Link to="/">Home</Link>
+					<Link to="/about">About</Link>
+				</nav>
+			</header>
+			<Outlet />
+			<TanStackRouterDevtools />
+		</>
+	),
+});
 ```
 
 The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
 
 More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
 
 ## Data Fetching
 
@@ -105,26 +103,26 @@ For example:
 
 ```tsx
 const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
+	getParentRoute: () => rootRoute,
+	path: "/people",
+	loader: async () => {
+		const response = await fetch("https://swapi.dev/api/people");
+		return response.json() as Promise<{
+			results: {
+				name: string;
+			}[];
+		}>;
+	},
+	component: () => {
+		const data = peopleRoute.useLoaderData();
+		return (
+			<ul>
+				{data.results.map((person) => (
+					<li key={person.name}>{person.name}</li>
+				))}
+			</ul>
+		);
+	},
 });
 ```
 
@@ -152,13 +150,13 @@ const queryClient = new QueryClient();
 // ...
 
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
+	const root = ReactDOM.createRoot(rootElement);
 
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
+	root.render(
+		<QueryClientProvider client={queryClient}>
+			<RouterProvider router={router} />
+		</QueryClientProvider>,
+	);
 }
 ```
 
@@ -168,13 +166,13 @@ You can also add TanStack Query Devtools to the root route (optional).
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
+	component: () => (
+		<>
+			<Outlet />
+			<ReactQueryDevtools buttonPosition="top-right" />
+			<TanStackRouterDevtools />
+		</>
+	),
 });
 ```
 
@@ -186,31 +184,30 @@ import { useQuery } from "@tanstack/react-query";
 import "./App.css";
 
 function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
+	const { data } = useQuery({
+		queryKey: ["people"],
+		queryFn: () =>
+			fetch("https://swapi.dev/api/people")
+				.then((res) => res.json())
+				.then((data) => data.results as { name: string }[]),
+		initialData: [],
+	});
 
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
+	return (
+		<div>
+			<ul>
+				{data.map((person) => (
+					<li key={person.name}>{person.name}</li>
+				))}
+			</ul>
+		</div>
+	);
 }
 
 export default App;
 ```
 
 You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
-
 
 # Learn More
 

@@ -30,7 +30,7 @@ export function DatasetSummaryPanel({
 	isLoading,
 	error,
 }: DatasetSummaryPanelProps) {
-	const rowCount = dataset?.rowCount ?? 0;
+	const pointCount = dataset?.pointCount ?? 0;
 
 	return (
 		<Box bg="white" borderRadius="xl" boxShadow="sm" p={6}>
@@ -55,7 +55,7 @@ export function DatasetSummaryPanel({
 					<Stack gap={4}>
 						<Stack direction="row" justify="space-between" color="fg.muted" fontSize="sm">
 							<Text>Total variables: {columns.length}</Text>
-							<Text>Rows: {rowCount}</Text>
+							<Text>Points: {pointCount}</Text>
 						</Stack>
 						<Table.ScrollArea borderWidth="1px" borderColor="gray.100" borderRadius="lg" maxH="420px">
 							<Table.Root size="sm" stickyHeader variant="line">

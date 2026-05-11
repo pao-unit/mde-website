@@ -9,38 +9,49 @@ interface ProjectSettingsSummaryProps {
 }
 
 export function ProjectSettingsSummary({ projectId, filename, settings }: ProjectSettingsSummaryProps) {
-	const ignoredColumns = settings.removeColumns.length > 0 ? settings.removeColumns.join(", ") : "None";
+	const excluded = settings.excludeColumns ?? [];
+	const excludedColumns = excluded.length > 0 ? excluded.join(", ") : "None";
 
 	return (
 		<Box bg="white" borderRadius="xl" boxShadow="sm" p={6}>
 			<Stack gap={4}>
 				<Text fontSize="md" fontWeight="semibold">
-						Settings
-					</Text>
+					Settings
+				</Text>
 				<DataList.Root size="sm" colorPalette="gray">
 					<DataList.Item>
-						<DataList.ItemLabel>Target</DataList.ItemLabel>
-						<DataList.ItemValue>{settings.target}</DataList.ItemValue>
+						<DataList.ItemLabel>Targets</DataList.ItemLabel>
+						<DataList.ItemValue>{settings.targets.join(", ")}</DataList.ItemValue>
 					</DataList.Item>
 					<DataList.Item>
-						<DataList.ItemLabel>Dimensions (D)</DataList.ItemLabel>
-						<DataList.ItemValue>{settings.D}</DataList.ItemValue>
+						<DataList.ItemLabel>Max variables</DataList.ItemLabel>
+						<DataList.ItemValue>{settings.maxVariables}</DataList.ItemValue>
 					</DataList.Item>
 					<DataList.Item>
-						<DataList.ItemLabel>Library range</DataList.ItemLabel>
+						<DataList.ItemLabel>Training (library)</DataList.ItemLabel>
 						<DataList.ItemValue>
-							{settings.lib[0]} - {settings.lib[1]}
+							{settings.libraryRange.start} – {settings.libraryRange.end}
 						</DataList.ItemValue>
 					</DataList.Item>
 					<DataList.Item>
-						<DataList.ItemLabel>Prediction range</DataList.ItemLabel>
+						<DataList.ItemLabel>Training (prediction)</DataList.ItemLabel>
 						<DataList.ItemValue>
-							{settings.pred[0]} - {settings.pred[1]}
+							{settings.predictionRange.start} – {settings.predictionRange.end}
 						</DataList.ItemValue>
 					</DataList.Item>
 					<DataList.Item>
-						<DataList.ItemLabel>Ignored</DataList.ItemLabel>
-						<DataList.ItemValue>{ignoredColumns}</DataList.ItemValue>
+						<DataList.ItemLabel>Holdout</DataList.ItemLabel>
+						<DataList.ItemValue>
+							{settings.holdoutRange.start} – {settings.holdoutRange.end}
+						</DataList.ItemValue>
+					</DataList.Item>
+					<DataList.Item>
+						<DataList.ItemLabel>Excluded</DataList.ItemLabel>
+						<DataList.ItemValue>{excludedColumns}</DataList.ItemValue>
+					</DataList.Item>
+					<DataList.Item>
+						<DataList.ItemLabel>Seed</DataList.ItemLabel>
+						<DataList.ItemValue>{settings.seed}</DataList.ItemValue>
 					</DataList.Item>
 					<DataList.Item>
 						<DataList.ItemLabel>Source file</DataList.ItemLabel>
