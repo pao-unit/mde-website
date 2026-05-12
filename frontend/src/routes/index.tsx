@@ -1,15 +1,17 @@
 import { Badge, Button, Container, Stack, Table, Text } from "@chakra-ui/react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
 import { PageHeader, Panel } from "../components/ui/index.ts";
-import { $api, getErrorMessage } from "../shared/api/client.ts";
+import { $api } from "../shared/api/client.ts";
 
 export const Route = createFileRoute("/")({
+	loader: ({ context }) =>
+		context.queryClient.ensureQueryData($api.queryOptions("get", "/api/projects", undefined, { staleTime: 30_000 })),
 	component: App,
 });
 
 function App() {
-	const projectsQuery = $api.useQuery("get", "/api/projects", undefined, { staleTime: 30_000 });
-	const projects = projectsQuery.data ?? [];
+	const { data: projects } = useSuspenseQuery($api.queryOptions("get", "/api/projects", undefined, { staleTime: 30_000 }));
 
 	return (
 		<Container maxW="6xl" py={{ base: 6, md: 10 }} px={{ base: 4, md: 6 }}>
@@ -25,11 +27,7 @@ function App() {
 				/>
 
 				<Panel title="Projects">
-					{projectsQuery.isPending ? (
-						<Text color="fg.muted">Loading projects...</Text>
-					) : projectsQuery.isError ? (
-						<Text color="red.700">{getErrorMessage(projectsQuery.error)}</Text>
-					) : projects.length === 0 ? (
+					{projects.length === 0 ? (
 						<Stack gap={3}>
 							<Text color="fg.muted">No projects have been created yet.</Text>
 							<Button asChild colorPalette="blue" alignSelf="flex-start">

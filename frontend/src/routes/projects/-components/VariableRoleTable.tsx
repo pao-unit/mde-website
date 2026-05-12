@@ -1,21 +1,17 @@
 import { Badge, Button, FormatNumber, Stack, Table, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
-import type { ColumnSummary } from "../../../components/projects/types.ts";
 import { ErrorState } from "../../../components/ui/ErrorState.tsx";
 import { LoadingState } from "../../../components/ui/LoadingState.tsx";
 import { Panel } from "../../../components/ui/Panel.tsx";
-
-export type VariableRole = "target" | "candidate" | "excluded";
+import type { ColumnSummary, ProjectSettings } from "../-utils/model.ts";
+import type { VariableRole } from "../-utils/settings.ts";
 
 export interface VariableRoleTableProps {
 	columns: ColumnSummary[];
-	targets: string[];
-	excludedColumns: string[];
-	onTargetsChange: (targets: string[]) => void;
-	onExcludedColumnsChange: (columns: string[]) => void;
+	settings: ProjectSettings;
+	onRoleChange: (column: string, role: VariableRole) => void;
 	selectedVariable?: string | null;
 	onSelectVariable?: (column: string) => void;
-	allowMultipleTargets?: boolean;
 	isLoading?: boolean;
 	error?: string | null;
 	maxHeight?: number | string;
@@ -25,39 +21,20 @@ export interface VariableRoleTableProps {
 
 export function VariableRoleTable({
 	columns,
-	targets,
-	excludedColumns,
-	onTargetsChange,
-	onExcludedColumnsChange,
+	settings,
+	onRoleChange,
 	selectedVariable,
 	onSelectVariable,
-	allowMultipleTargets = true,
 	isLoading = false,
 	error,
 	maxHeight = 520,
 	title = "Variables",
 	description = "Assign each column as a target, candidate predictor, or excluded variable before running the analysis.",
 }: VariableRoleTableProps) {
+	const targets = settings.targets;
+	const excludedColumns = settings.excludeColumns ?? [];
 	const targetSet = new Set(targets);
 	const excludedSet = new Set(excludedColumns);
-
-	const assignRole = (name: string, role: VariableRole) => {
-		if (role === "target") {
-			const nextTargets = allowMultipleTargets ? unique([...targets, name]) : [name];
-			onTargetsChange(nextTargets);
-			onExcludedColumnsChange(excludedColumns.filter((column) => column !== name));
-			return;
-		}
-
-		if (role === "excluded") {
-			onTargetsChange(targets.filter((column) => column !== name));
-			onExcludedColumnsChange(unique([...excludedColumns.filter((column) => column !== name), name]));
-			return;
-		}
-
-		onTargetsChange(targets.filter((column) => column !== name));
-		onExcludedColumnsChange(excludedColumns.filter((column) => column !== name));
-	};
 
 	return (
 		<Panel eyebrow="Dataset" title={title} description={description}>
@@ -122,13 +99,13 @@ export function VariableRoleTable({
 											</Table.Cell>
 											<Table.Cell>
 												<Stack direction="row" gap={1} align="center" wrap="nowrap">
-													<RoleButton active={role === "target"} onClick={() => assignRole(column.name, "target")}>
+													<RoleButton active={role === "target"} onClick={() => onRoleChange(column.name, "target")}>
 														Target
 													</RoleButton>
-													<RoleButton active={role === "candidate"} onClick={() => assignRole(column.name, "candidate")}>
+													<RoleButton active={role === "candidate"} onClick={() => onRoleChange(column.name, "candidate")}>
 														Candidate
 													</RoleButton>
-													<RoleButton active={role === "excluded"} onClick={() => assignRole(column.name, "excluded")}>
+													<RoleButton active={role === "excluded"} onClick={() => onRoleChange(column.name, "excluded")}>
 														Exclude
 													</RoleButton>
 												</Stack>
@@ -205,8 +182,4 @@ function formatNumber(value: number | null | undefined): ReactNode {
 	const rounded = Math.round(value * 1000) / 1000;
 	const isInteger = Number.isInteger(rounded);
 	return <FormatNumber value={rounded} minimumFractionDigits={isInteger ? 0 : 3} maximumFractionDigits={isInteger ? 0 : 3} />;
-}
-
-function unique(values: string[]) {
-	return Array.from(new Set(values));
 }

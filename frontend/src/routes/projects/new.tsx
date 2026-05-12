@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useCreateProject } from "../../features/projects/api/index.ts";
-import { NewProjectPage } from "../../features/projects/components/index.ts";
+import { NewProjectPage } from "./-components/index.ts";
+import { useCreateProject } from "./-hooks/mutations.ts";
 import { getErrorMessage } from "../../shared/api/client.ts";
 
 export const Route = createFileRoute("/projects/new")({

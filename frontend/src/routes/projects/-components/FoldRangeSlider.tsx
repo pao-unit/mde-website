@@ -1,23 +1,25 @@
 import { Box, HStack, Input, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useId, useRef, useState } from "react";
+import { type FoldBoundary, type FoldRanges, moveFoldBoundary } from "../-utils/foldRanges.ts";
 
 interface FoldRangeSliderProps {
 	totalPoints: number;
-	libraryRange: [number, number];
-	predictionRange: [number, number];
-	holdoutRange: [number, number];
-	onLibraryRangeChange: (range: [number, number]) => void;
-	onPredictionRangeChange: (range: [number, number]) => void;
-	onHoldoutRangeChange: (range: [number, number]) => void;
+	ranges: FoldRanges;
+	onRangesChange: (ranges: FoldRanges) => void;
 }
 
 type ThumbKey = "t1" | "t2" | "t3" | "t4" | "t5" | "t6";
 
 const THUMB_KEYS: ThumbKey[] = ["t1", "t2", "t3", "t4", "t5", "t6"];
 
-const LIBRARY_COLOR = "blue.400";
-const PREDICTION_COLOR = "teal.400";
-const HOLDOUT_COLOR = "orange.400";
+const BOUNDARY_OF: Record<ThumbKey, FoldBoundary> = {
+	t1: "library.start",
+	t2: "library.end",
+	t3: "prediction.start",
+	t4: "prediction.end",
+	t5: "holdout.start",
+	t6: "holdout.end",
+};
 
 const REGION_OF: Record<ThumbKey, "library" | "prediction" | "holdout"> = {
 	t1: "library",
@@ -28,21 +30,17 @@ const REGION_OF: Record<ThumbKey, "library" | "prediction" | "holdout"> = {
 	t6: "holdout",
 };
 
+const LIBRARY_COLOR = "blue.400";
+const PREDICTION_COLOR = "teal.400";
+const HOLDOUT_COLOR = "orange.400";
+
 const COLOR_OF = {
 	library: LIBRARY_COLOR,
 	prediction: PREDICTION_COLOR,
 	holdout: HOLDOUT_COLOR,
 } as const;
 
-export function FoldRangeSlider({
-	totalPoints,
-	libraryRange,
-	predictionRange,
-	holdoutRange,
-	onLibraryRangeChange,
-	onPredictionRangeChange,
-	onHoldoutRangeChange,
-}: FoldRangeSliderProps) {
+export function FoldRangeSlider({ totalPoints, ranges, onRangesChange }: FoldRangeSliderProps) {
 	const min = 1;
 	const max = Math.max(totalPoints, 1);
 	const trackRef = useRef<HTMLDivElement | null>(null);
@@ -50,35 +48,19 @@ export function FoldRangeSlider({
 	const reactId = useId();
 
 	const values = {
-		t1: clamp(libraryRange[0], min, max),
-		t2: clamp(libraryRange[1], min, max),
-		t3: clamp(predictionRange[0], min, max),
-		t4: clamp(predictionRange[1], min, max),
-		t5: clamp(holdoutRange[0], min, max),
-		t6: clamp(holdoutRange[1], min, max),
+		t1: clamp(ranges.libraryRange.start, min, max),
+		t2: clamp(ranges.libraryRange.end, min, max),
+		t3: clamp(ranges.predictionRange.start, min, max),
+		t4: clamp(ranges.predictionRange.end, min, max),
+		t5: clamp(ranges.holdoutRange.start, min, max),
+		t6: clamp(ranges.holdoutRange.end, min, max),
 	};
 
 	const commit = (key: ThumbKey, raw: number) => {
-		const rounded = Math.round(raw);
-		const current = { ...values };
-		current[key] = rounded;
-
-		// Enforce t1 <= t2 <= t3 <= t4 <= t5 <= t6 by clamping against neighbors.
-		const next = { ...values };
-		if (key === "t1") next.t1 = clamp(current.t1, min, values.t2);
-		if (key === "t2") next.t2 = clamp(current.t2, next.t1, values.t3);
-		if (key === "t3") next.t3 = clamp(current.t3, values.t2, values.t4);
-		if (key === "t4") next.t4 = clamp(current.t4, next.t3, values.t5);
-		if (key === "t5") next.t5 = clamp(current.t5, values.t4, values.t6);
-		if (key === "t6") next.t6 = clamp(current.t6, next.t5, max);
-
-		const libChanged = next.t1 !== values.t1 || next.t2 !== values.t2;
-		const predChanged = next.t3 !== values.t3 || next.t4 !== values.t4;
-		const holdChanged = next.t5 !== values.t5 || next.t6 !== values.t6;
-
-		if (libChanged) onLibraryRangeChange([next.t1, next.t2]);
-		if (predChanged) onPredictionRangeChange([next.t3, next.t4]);
-		if (holdChanged) onHoldoutRangeChange([next.t5, next.t6]);
+		const nextRanges = moveFoldBoundary(ranges, BOUNDARY_OF[key], Math.round(raw), { totalPoints });
+		if (!sameRanges(ranges, nextRanges)) {
+			onRangesChange(nextRanges);
+		}
 	};
 
 	const valueFromClientX = (clientX: number) => {
@@ -95,9 +77,6 @@ export function FoldRangeSlider({
 		setDragging(key);
 	};
 
-	// Keep latest commit / valueFromClientX in refs so the window-listener effect
-	// below does not need to re-subscribe on every render (these are recreated
-	// each render now that manual memoization is gone).
 	const commitRef = useRef(commit);
 	commitRef.current = commit;
 	const valueFromClientXRef = useRef(valueFromClientX);
@@ -152,7 +131,6 @@ export function FoldRangeSlider({
 	};
 
 	const pct = (v: number) => ((v - min) / Math.max(1, max - min)) * 100;
-
 	const librarySize = Math.max(0, values.t2 - values.t1 + 1);
 	const predictionSize = Math.max(0, values.t4 - values.t3 + 1);
 	const holdoutSize = Math.max(0, values.t6 - values.t5 + 1);
@@ -166,7 +144,7 @@ export function FoldRangeSlider({
 					<Legend color={HOLDOUT_COLOR} label="Holdout" range={[values.t5, values.t6]} size={holdoutSize} />
 				</HStack>
 				<Text fontSize="xs" color="fg.muted">
-					Points 1 – {max.toLocaleString()}
+					Points 1 - {max.toLocaleString()}
 				</Text>
 			</HStack>
 
@@ -241,7 +219,7 @@ export function FoldRangeSlider({
 					start={values.t1}
 					end={values.t2}
 					startBounds={[min, values.t2]}
-					endBounds={[values.t1, values.t3]}
+					endBounds={[values.t1, values.t3 - 1]}
 					onStart={(v) => commit("t1", v)}
 					onEnd={(v) => commit("t2", v)}
 				/>
@@ -250,8 +228,8 @@ export function FoldRangeSlider({
 					color={PREDICTION_COLOR}
 					start={values.t3}
 					end={values.t4}
-					startBounds={[values.t2, values.t4]}
-					endBounds={[values.t3, values.t5]}
+					startBounds={[values.t2 + 1, values.t4]}
+					endBounds={[values.t3, values.t5 - 1]}
 					onStart={(v) => commit("t3", v)}
 					onEnd={(v) => commit("t4", v)}
 				/>
@@ -260,13 +238,55 @@ export function FoldRangeSlider({
 					color={HOLDOUT_COLOR}
 					start={values.t5}
 					end={values.t6}
-					startBounds={[values.t4, values.t6]}
+					startBounds={[values.t4 + 1, values.t6]}
 					endBounds={[values.t5, max]}
 					onStart={(v) => commit("t5", v)}
 					onEnd={(v) => commit("t6", v)}
 				/>
 			</Stack>
 		</Stack>
+	);
+}
+
+function NumberField({
+	value,
+	min,
+	max,
+	onCommit,
+}: {
+	value: number;
+	min: number;
+	max: number;
+	onCommit: (value: number) => void;
+}) {
+	const [text, setText] = useState(String(value));
+
+	useEffect(() => {
+		setText(String(value));
+	}, [value]);
+
+	return (
+		<Input
+			type="number"
+			size="sm"
+			value={text}
+			min={min}
+			max={max}
+			onChange={(event) => setText(event.target.value)}
+			onBlur={() => {
+				const parsed = Number.parseInt(text, 10);
+				if (Number.isFinite(parsed)) {
+					onCommit(parsed);
+				} else {
+					setText(String(value));
+				}
+			}}
+			onKeyDown={(event) => {
+				if (event.key === "Enter") {
+					event.currentTarget.blur();
+				}
+			}}
+		/>
 	);
 }
 
@@ -298,7 +318,7 @@ function Legend({ color, label, range, size }: { color: string; label: string; r
 				{label}
 			</Text>
 			<Text fontSize="sm" color="fg.muted">
-				{range[0].toLocaleString()} – {range[1].toLocaleString()} ({size.toLocaleString()} points)
+				{range[0].toLocaleString()} - {range[1].toLocaleString()} ({size.toLocaleString()} points)
 			</Text>
 		</HStack>
 	);
@@ -334,7 +354,7 @@ function NumberPair({
 			<HStack gap={2}>
 				<NumberField value={start} min={startBounds[0]} max={startBounds[1]} onCommit={onStart} />
 				<Text fontSize="xs" color="fg.muted">
-					–
+					-
 				</Text>
 				<NumberField value={end} min={endBounds[0]} max={endBounds[1]} onCommit={onEnd} />
 			</HStack>
@@ -342,46 +362,14 @@ function NumberPair({
 	);
 }
 
-function NumberField({
-	value,
-	min,
-	max,
-	onCommit,
-}: {
-	value: number;
-	min: number;
-	max: number;
-	onCommit: (value: number) => void;
-}) {
-	const [prevValue, setPrevValue] = useState(value);
-	const [text, setText] = useState(String(value));
-	if (prevValue !== value) {
-		setPrevValue(value);
-		setText(String(value));
-	}
-
+function sameRanges(left: FoldRanges, right: FoldRanges): boolean {
 	return (
-		<Input
-			type="number"
-			size="sm"
-			value={text}
-			min={min}
-			max={max}
-			onChange={(event) => setText(event.target.value)}
-			onBlur={() => {
-				const parsed = Number.parseInt(text, 10);
-				if (Number.isFinite(parsed)) {
-					onCommit(parsed);
-				} else {
-					setText(String(value));
-				}
-			}}
-			onKeyDown={(event) => {
-				if (event.key === "Enter") {
-					event.currentTarget.blur();
-				}
-			}}
-		/>
+		left.libraryRange.start === right.libraryRange.start &&
+		left.libraryRange.end === right.libraryRange.end &&
+		left.predictionRange.start === right.predictionRange.start &&
+		left.predictionRange.end === right.predictionRange.end &&
+		left.holdoutRange.start === right.holdoutRange.start &&
+		left.holdoutRange.end === right.holdoutRange.end
 	);
 }
 

@@ -1,115 +1,136 @@
-import { Button } from "@chakra-ui/react";
-import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
-import type { FormEvent, ReactNode } from "react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import type { FormEvent } from "react";
 import { useState } from "react";
-import { useRunAnalysis } from "../../../features/projects/api/index.ts";
-import { ProjectSetupPage } from "../../../features/projects/components/index.ts";
-import type { RunStatus } from "../../../features/projects/components/RunStatusBanner.tsx";
+import { ProjectSetupPage, type ProjectWorkflowStepId, type RunStatus } from "../-components/index.ts";
+import { useRunAnalysis } from "../-hooks/mutations.ts";
+import { getDefaultFoldRanges } from "../-utils/foldRanges.ts";
+import type { AnalysisBackend, ColumnSummary, DatasetOverview, ProjectSettings } from "../-utils/model.ts";
 import {
-	type ColumnSummary,
-	type DatasetOverview,
-	type FoldRanges,
-	getDefaultFoldRanges,
-	type PointRange,
-	type ProjectSettings,
-	type AnalysisBackend,
-	sanitizeSettingsDraft,
-} from "../../../features/projects/model/index.ts";
+	assignVariableRole,
+	initSettings,
+	sanitizeSettings,
+	setBackend,
+	validateSettings,
+	type VariableRole,
+} from "../-utils/settings.ts";
 import { $api, getErrorMessage } from "../../../shared/api/client.ts";
 
 export const Route = createFileRoute("/projects/$projectId/settings")({
+	validateSearch: (search: Record<string, unknown>): SettingsSearch => ({
+		variable: typeof search.variable === "string" && search.variable.trim() ? search.variable : undefined,
+	}),
+	loaderDeps: ({ search }) => search,
+	loader: async ({ context, params, deps }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(
+				$api.queryOptions("get", "/api/projects/{project_id}", {
+					params: { path: { project_id: params.projectId } },
+				}),
+			),
+			context.queryClient.ensureQueryData(
+				$api.queryOptions(
+					"get",
+					"/api/projects/{project_id}/dataset",
+					{ params: { path: { project_id: params.projectId } } },
+					{ staleTime: 5 * 60_000 },
+				),
+			),
+			deps.variable
+				? context.queryClient.ensureQueryData(
+						$api.queryOptions(
+							"get",
+							"/api/projects/{project_id}/variables",
+							{
+								params: {
+									path: { project_id: params.projectId },
+									query: { variables: [deps.variable] },
+								},
+							},
+							{ staleTime: 60_000 },
+						),
+					)
+				: Promise.resolve(),
+		]);
+	},
 	component: SettingsPage,
 });
 
-type RangeTuple = [number, number];
-
 type SettingsNavigate = ReturnType<typeof Route.useNavigate>;
+type SettingsSearch = {
+	variable?: string;
+};
 
 const noop = () => {};
 
 function SettingsPage() {
 	const navigate = Route.useNavigate();
 	const { projectId } = Route.useParams();
+	const { variable } = Route.useSearch();
 
-	const projectQuery = $api.useQuery("get", "/api/projects/{project_id}", {
-		params: { path: { project_id: projectId } },
-	});
-	const datasetQuery = $api.useQuery(
-		"get",
-		"/api/projects/{project_id}/dataset",
-		{ params: { path: { project_id: projectId } } },
-		{ staleTime: 5 * 60_000 },
+	const { data: project } = useSuspenseQuery(
+		$api.queryOptions("get", "/api/projects/{project_id}", {
+			params: { path: { project_id: projectId } },
+		}),
+	);
+	const { data: dataset } = useSuspenseQuery(
+		$api.queryOptions(
+			"get",
+			"/api/projects/{project_id}/dataset",
+			{ params: { path: { project_id: projectId } } },
+			{ staleTime: 5 * 60_000 },
+		),
 	);
 
-	const columns = datasetQuery.data?.columns ?? [];
+	const columns = dataset.columns;
 	const columnNames = columns.map((column) => column.name);
-	const totalPoints = datasetQuery.data?.pointCount ?? 0;
+	const totalPoints = dataset.pointCount;
 	const defaultRanges = getDefaultFoldRanges(totalPoints);
-	const latestRun = projectQuery.data?.latestRun ?? null;
+	const latestRun = project.latestRun ?? null;
 	const latestSettings = latestRun?.settings ?? null;
-	const filename = projectQuery.data?.filename;
 	const status = latestRun?.status ?? "draft";
+	const completedSteps: ProjectWorkflowStepId[] = latestRun?.result ? ["results"] : [];
 
-	const headerActions = (
-		<Button asChild variant="outline">
-			<RouterLink to="/projects/$projectId" params={{ projectId }}>
-				Back to project
-			</RouterLink>
-		</Button>
-	);
+	const goToStep = (step: ProjectWorkflowStepId) => {
+		if (step === "settings") return;
+		void navigate({ to: "/projects/$projectId", params: { projectId } });
+	};
 
 	if (totalPoints <= 0 || columnNames.length === 0) {
+		const settings = initSettings(null, { columnNames, defaultRanges, totalPoints });
 		return (
 			<ProjectSetupPage
-				filename={filename}
-				dataset={datasetQuery.data}
+				filename={project.filename}
+				dataset={dataset}
 				columns={columns}
-				isDatasetLoading={datasetQuery.isPending}
-				datasetError={datasetQuery.isError ? getErrorMessage(datasetQuery.error) : null}
-				targets={[]}
-				onTargetsChange={noop}
-				excludeColumns={[]}
-				onExcludeColumnsChange={noop}
-				backend="edmkit"
+				settings={settings}
+				onSettingsChange={noop}
 				onBackendChange={noop}
-				maxVariables={6}
-				onMaxVariablesChange={noop}
-				prefilterThreshold={0}
-				onPrefilterThresholdChange={noop}
+				onVariableRoleChange={noop}
 				totalPoints={totalPoints}
-				libraryRange={toTuple(defaultRanges.libraryRange)}
-				onLibraryRangeChange={noop}
-				predictionRange={toTuple(defaultRanges.predictionRange)}
-				onPredictionRangeChange={noop}
-				holdoutRange={toTuple(defaultRanges.holdoutRange)}
-				onHoldoutRangeChange={noop}
-				seed={0}
-				onSeedChange={noop}
 				submitDisabled
 				status={status}
-				headerActions={headerActions}
+				onStepSelect={goToStep}
+				completedSteps={completedSteps}
 			/>
 		);
 	}
 
-	const formKey = `${projectId}:${latestRun?.id ?? "draft"}:${totalPoints}:${columnNames.join("\u0000")}`;
-
 	return (
 		<SettingsForm
-			key={formKey}
+			key={`${projectId}:${latestRun?.id ?? "draft"}:${totalPoints}:${columnNames.join("\u0000")}`}
 			projectId={projectId}
 			columnNames={columnNames}
 			columns={columns}
 			totalPoints={totalPoints}
-			defaultRanges={defaultRanges}
 			latestSettings={latestSettings}
-			filename={filename}
-			dataset={datasetQuery.data}
-			datasetLoading={datasetQuery.isPending}
-			datasetError={datasetQuery.isError ? getErrorMessage(datasetQuery.error) : null}
-			status={status}
+			filename={project.filename}
+			dataset={dataset}
+			initialVariable={variable}
 			navigate={navigate}
-			headerActions={headerActions}
+			status={status}
+			onStepSelect={goToStep}
+			completedSteps={completedSteps}
 		/>
 	);
 }
@@ -119,15 +140,14 @@ interface SettingsFormProps {
 	columnNames: string[];
 	columns: ColumnSummary[];
 	totalPoints: number;
-	defaultRanges: FoldRanges;
 	latestSettings: ProjectSettings | null;
-	filename: string | undefined;
-	dataset: DatasetOverview | null | undefined;
-	datasetLoading: boolean;
-	datasetError: string | null;
-	status: RunStatus;
+	filename: string;
+	dataset: DatasetOverview;
+	initialVariable?: string;
 	navigate: SettingsNavigate;
-	headerActions: ReactNode;
+	status: RunStatus;
+	onStepSelect: (step: ProjectWorkflowStepId) => void;
+	completedSteps: ProjectWorkflowStepId[];
 }
 
 function SettingsForm({
@@ -135,164 +155,103 @@ function SettingsForm({
 	columnNames,
 	columns,
 	totalPoints,
-	defaultRanges,
 	latestSettings,
 	filename,
 	dataset,
-	datasetLoading,
-	datasetError,
-	status,
+	initialVariable,
 	navigate,
-	headerActions,
+	status,
+	onStepSelect,
+	completedSteps,
 }: SettingsFormProps) {
-	const initial = sanitizeSettingsDraft(latestSettings ?? {}, {
-		columnNames,
-		defaultRanges,
-		totalPoints,
-	});
-	const initialTargetsRaw = initial.targets.length > 0 ? initial.targets : columnNames[0] ? [columnNames[0]] : [];
-	const initialTargets = initial.backend === "dimx" ? initialTargetsRaw.slice(0, 1) : initialTargetsRaw;
+	const defaultRanges = getDefaultFoldRanges(totalPoints);
+	const settingsOptions = { columnNames, defaultRanges, totalPoints };
+	const [settings, setSettings] = useState(() => initSettings(latestSettings, settingsOptions));
 
-	const [targets, setTargets] = useState<string[]>(initialTargets);
-	const [excludeColumns, setExcludeColumns] = useState<string[]>(
-		(initial.excludeColumns ?? []).filter((column) => !initialTargets.includes(column)),
-	);
-	const [backend, setBackend] = useState<AnalysisBackend>(initial.backend ?? "edmkit");
-	const [maxVariables, setMaxVariables] = useState(initial.maxVariables);
-	const [prefilterThreshold, setPrefilterThreshold] = useState(initial.prefilterThreshold);
-	const [seed, setSeed] = useState(initial.seed);
-	const [libraryRange, setLibraryRange] = useState<RangeTuple>(toTuple(initial.libraryRange));
-	const [predictionRange, setPredictionRange] = useState<RangeTuple>(toTuple(initial.predictionRange));
-	const [holdoutRange, setHoldoutRange] = useState<RangeTuple>(toTuple(initial.holdoutRange));
-	const [selectedVariable, setSelectedVariable] = useState<string | null>(initialTargets[0] ?? columnNames[0] ?? null);
-
+	const selectedVariable =
+		initialVariable && columnNames.includes(initialVariable) ? initialVariable : (settings.targets[0] ?? columnNames[0] ?? null);
 	const selectedVariables = selectedVariable ? [selectedVariable] : [];
-	const variablesQuery = $api.useQuery(
-		"get",
-		"/api/projects/{project_id}/variables",
-		{
-			params: {
-				path: { project_id: projectId },
-				query: { variables: selectedVariables },
+	const variablesQuery = useQuery(
+		$api.queryOptions(
+			"get",
+			"/api/projects/{project_id}/variables",
+			{
+				params: {
+					path: { project_id: projectId },
+					query: { variables: selectedVariables },
+				},
 			},
-		},
-		{
-			enabled: selectedVariables.length > 0,
-			staleTime: 60_000,
-		},
+			{
+				enabled: selectedVariables.length > 0,
+				staleTime: 60_000,
+			},
+		),
 	);
 
 	const runAnalysis = useRunAnalysis(projectId, {
 		columnNames,
+		defaultRanges,
 		totalPoints,
-		onSuccess(run) {
+		onSuccess() {
 			void navigate({ to: "/projects/$projectId", params: { projectId }, replace: true });
-			void run;
 		},
 	});
 
+	const commitSettings = (nextSettings: ProjectSettings) => {
+		setSettings(sanitizeSettings(nextSettings, settingsOptions));
+	};
+
+	const handleBackendChange = (backend: AnalysisBackend) => {
+		setSettings((current) => setBackend(current, backend, { columnNames }));
+	};
+
+	const handleVariableRoleChange = (column: string, role: VariableRole) => {
+		setSettings((current) => assignVariableRole(current, column, role, { columnNames }));
+	};
+
+	const handleSelectVariable = (nextVariable: string) => {
+		void navigate({
+			to: "/projects/$projectId/settings",
+			params: { projectId },
+			search: { variable: nextVariable },
+			replace: true,
+		});
+	};
+
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		const settings: ProjectSettings = {
-			backend,
-			targets,
-			excludeColumns,
-			maxVariables,
-			libraryRange: fromTuple(libraryRange),
-			predictionRange: fromTuple(predictionRange),
-			holdoutRange: fromTuple(holdoutRange),
-			seed,
-			prefilterThreshold,
-		};
 		runAnalysis.mutate(settings);
-	};
-
-	const handleBackendChange = (nextBackend: AnalysisBackend) => {
-		setBackend(nextBackend);
-		if (nextBackend === "dimx" && targets.length > 1) {
-			const nextTargets = [targets[0]];
-			setTargets(nextTargets);
-			if (!selectedVariable || !nextTargets.includes(selectedVariable)) {
-				setSelectedVariable(nextTargets[0] ?? null);
-			}
-		}
-	};
-
-	const handleTargetsChange = (nextTargets: string[]) => {
-		const normalizedTargets = normalizeTargetsForBackend(nextTargets, targets, backend);
-		setTargets(normalizedTargets);
-		setExcludeColumns((current) => current.filter((column) => !normalizedTargets.includes(column)));
-		if (normalizedTargets.length > 0 && (!selectedVariable || !normalizedTargets.includes(selectedVariable))) {
-			setSelectedVariable(normalizedTargets[0] ?? null);
-		}
 	};
 
 	const previewSeries = selectedVariable ? (variablesQuery.data?.[selectedVariable] ?? []).filter(isFiniteNumber) : [];
 	const previewError = variablesQuery.isError ? getErrorMessage(variablesQuery.error) : null;
 	const formError = runAnalysis.error ? getErrorMessage(runAnalysis.error) : null;
+	const validationIssues = validateSettings(settings, { columnNames, totalPoints });
 
 	return (
 		<ProjectSetupPage
 			filename={filename}
 			dataset={dataset}
 			columns={columns}
-			isDatasetLoading={datasetLoading}
-			datasetError={datasetError}
 			selectedVariable={selectedVariable}
-			onSelectVariable={setSelectedVariable}
+			onSelectVariable={handleSelectVariable}
 			previewData={previewSeries}
 			isPreviewLoading={variablesQuery.isPending}
 			previewError={previewError}
-			targets={targets}
-			onTargetsChange={handleTargetsChange}
-			excludeColumns={excludeColumns}
-			onExcludeColumnsChange={setExcludeColumns}
-			backend={backend}
+			settings={settings}
+			onSettingsChange={commitSettings}
 			onBackendChange={handleBackendChange}
-			maxVariables={maxVariables}
-			onMaxVariablesChange={setMaxVariables}
-			prefilterThreshold={prefilterThreshold}
-			onPrefilterThresholdChange={setPrefilterThreshold}
+			onVariableRoleChange={handleVariableRoleChange}
 			totalPoints={totalPoints}
-			libraryRange={libraryRange}
-			onLibraryRangeChange={setLibraryRange}
-			predictionRange={predictionRange}
-			onPredictionRangeChange={setPredictionRange}
-			holdoutRange={holdoutRange}
-			onHoldoutRangeChange={setHoldoutRange}
-			seed={seed}
-			onSeedChange={setSeed}
 			onSubmit={handleSubmit}
 			isSubmitting={runAnalysis.isPending}
 			formError={formError}
-			submitDisabled={
-				targets.length === 0 || (backend === "dimx" && targets.length !== 1) || columnNames.length === 0 || runAnalysis.isPending
-			}
+			submitDisabled={validationIssues.length > 0 || runAnalysis.isPending}
 			status={status}
-			headerActions={headerActions}
+			onStepSelect={onStepSelect}
+			completedSteps={completedSteps}
 		/>
 	);
-}
-
-function toTuple(range: PointRange): RangeTuple {
-	return [range.start, range.end];
-}
-
-function fromTuple(range: RangeTuple): PointRange {
-	return { start: range[0], end: range[1] };
-}
-
-function normalizeTargetsForBackend(
-	nextTargets: string[],
-	currentTargets: string[],
-	backend: AnalysisBackend,
-): string[] {
-	if (backend !== "dimx" || nextTargets.length <= 1) {
-		return nextTargets;
-	}
-	const current = new Set(currentTargets);
-	const added = nextTargets.find((target) => !current.has(target));
-	return [added ?? nextTargets[0]];
 }
 
 function isFiniteNumber(value: number | null | undefined): value is number {

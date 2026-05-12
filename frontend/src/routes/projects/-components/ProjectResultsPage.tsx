@@ -1,12 +1,11 @@
 import { Badge, DataList, FormatNumber, Stack, Table, Text } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import OverlayPlot from "../../../components/OverlayPlot.tsx";
-import type { ProjectResult } from "../../../components/projects/types.ts";
 import { ChartScrollArea } from "../../../components/ui/ChartScrollArea.tsx";
 import { ErrorState } from "../../../components/ui/ErrorState.tsx";
 import { LoadingState } from "../../../components/ui/LoadingState.tsx";
 import { Panel } from "../../../components/ui/Panel.tsx";
-import type { PointRange, PrefilterSummary, ProjectSettings } from "../model/index.ts";
+import type { PointRange, PrefilterSummary, ProjectResult, ProjectSettings } from "../-utils/model.ts";
 import type { ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
 import { ProjectLayoutShell } from "./ProjectLayoutShell.tsx";
 import type { RunStatus } from "./RunStatusBanner.tsx";

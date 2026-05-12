@@ -1,25 +1,17 @@
 import { type UseMutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { components } from "../../../libs/api/openapi.gen.ts";
+import type { AnalysisRun, ProjectSettings, ProjectSummary } from "../-utils/model.ts";
+import { sanitizeSettings, SettingsValidationError, type SettingsOptions, validateSettings } from "../-utils/settings.ts";
 import { $api, fetchClient } from "../../../shared/api/client.ts";
-import {
-	type ProjectSettings,
-	sanitizeSettingsDraft,
-	type SettingsDraft,
-	type SettingsSanitizeOptions,
-	SettingsValidationError,
-	validateProjectSettings,
-} from "../model/index.ts";
-
-type Project = components["schemas"]["Project"];
-type AnalysisRun = components["schemas"]["AnalysisRun"];
 
 export type CreateProjectVariables = {
 	file: File;
 };
 
-export type RunAnalysisVariables = SettingsDraft;
+export type RunAnalysisOptions = Omit<UseMutationOptions<AnalysisRun, Error, ProjectSettings>, "mutationFn"> & SettingsOptions;
 
-export function useCreateProject(options?: Omit<UseMutationOptions<Project, Error, CreateProjectVariables>, "mutationFn">) {
+export function useCreateProject(
+	options?: Omit<UseMutationOptions<ProjectSummary, Error, CreateProjectVariables>, "mutationFn">,
+) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -43,9 +35,6 @@ export function useCreateProject(options?: Omit<UseMutationOptions<Project, Erro
 	});
 }
 
-export type RunAnalysisOptions = Omit<UseMutationOptions<AnalysisRun, Error, RunAnalysisVariables>, "mutationFn"> &
-	SettingsSanitizeOptions;
-
 export function useRunAnalysis(projectId: string, options?: RunAnalysisOptions) {
 	const queryClient = useQueryClient();
 	const { columnNames, defaultRanges, totalPoints, ...mutationOptions } = options ?? {};
@@ -53,8 +42,8 @@ export function useRunAnalysis(projectId: string, options?: RunAnalysisOptions) 
 	return useMutation({
 		...mutationOptions,
 		mutationFn: async (draft) => {
-			const settings: ProjectSettings = sanitizeSettingsDraft(draft, { columnNames, defaultRanges, totalPoints });
-			const issues = validateProjectSettings(settings, { columnNames, totalPoints });
+			const settings = sanitizeSettings(draft, { columnNames, defaultRanges, totalPoints });
+			const issues = validateSettings(settings, { columnNames, totalPoints });
 			if (issues.length > 0) {
 				throw new SettingsValidationError(issues);
 			}
@@ -69,19 +58,10 @@ export function useRunAnalysis(projectId: string, options?: RunAnalysisOptions) 
 			return data;
 		},
 		onSuccess(run, variables, onMutateResult, context) {
+			void queryClient.invalidateQueries({ queryKey: $api.queryOptions("get", "/api/projects").queryKey });
 			void queryClient.invalidateQueries({
 				queryKey: $api.queryOptions("get", "/api/projects/{project_id}", {
 					params: { path: { project_id: projectId } },
-				}).queryKey,
-			});
-			void queryClient.invalidateQueries({
-				queryKey: $api.queryOptions("get", "/api/projects/{project_id}/runs/{run_id}", {
-					params: { path: { project_id: projectId, run_id: run.id } },
-				}).queryKey,
-			});
-			void queryClient.invalidateQueries({
-				queryKey: $api.queryOptions("get", "/api/projects/{project_id}/runs/{run_id}/result", {
-					params: { path: { project_id: projectId, run_id: run.id } },
 				}).queryKey,
 			});
 			mutationOptions.onSuccess?.(run, variables, onMutateResult, context);

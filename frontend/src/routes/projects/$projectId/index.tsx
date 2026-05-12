@@ -1,7 +1,8 @@
 import { Button } from "@chakra-ui/react";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link as RouterLink } from "@tanstack/react-router";
-import { ProjectDashboard, ProjectResultsPage, type ProjectWorkflowStepId } from "../../../features/projects/components/index.ts";
-import { deriveProjectWorkflow, isAnalysisActive } from "../../../features/projects/model/index.ts";
+import { ProjectDashboard, ProjectResultsPage, type ProjectWorkflowStepId } from "../-components/index.ts";
+import { deriveProjectWorkflow, isAnalysisActive } from "../-utils/project.ts";
 import { $api, getErrorMessage } from "../../../shared/api/client.ts";
 
 export const Route = createFileRoute("/projects/$projectId/")({
@@ -12,30 +13,33 @@ function ProjectPage() {
 	const navigate = Route.useNavigate();
 	const { projectId } = Route.useParams();
 
-	const projectQuery = $api.useQuery(
-		"get",
-		"/api/projects/{project_id}",
-		{ params: { path: { project_id: projectId } } },
-		{
-			refetchInterval(query) {
-				const status = deriveProjectWorkflow(query.state.data);
-				return isAnalysisActive(status) ? 5_000 : false;
+	const projectQuery = useSuspenseQuery(
+		$api.queryOptions(
+			"get",
+			"/api/projects/{project_id}",
+			{ params: { path: { project_id: projectId } } },
+			{
+				refetchInterval(query) {
+					const status = deriveProjectWorkflow(query.state.data);
+					return isAnalysisActive(status) ? 5_000 : false;
+				},
 			},
-		},
+		),
 	);
 
-	const datasetQuery = $api.useQuery(
-		"get",
-		"/api/projects/{project_id}/dataset",
-		{ params: { path: { project_id: projectId } } },
-		{
-			enabled: Boolean(projectQuery.data),
-			staleTime: 5 * 60_000,
-		},
+	const datasetQuery = useQuery(
+		$api.queryOptions(
+			"get",
+			"/api/projects/{project_id}/dataset",
+			{ params: { path: { project_id: projectId } } },
+			{
+				staleTime: 5 * 60_000,
+			},
+		),
 	);
 
 	const project = projectQuery.data;
-	const latestRun = project?.latestRun ?? null;
+	const latestRun = project.latestRun ?? null;
 	const status = deriveProjectWorkflow(project);
 	const result = latestRun?.result ?? null;
 	const settings = latestRun?.settings ?? null;
@@ -53,14 +57,6 @@ function ProjectPage() {
 			</RouterLink>
 		</Button>
 	);
-
-	if (projectQuery.isPending) {
-		return <ProjectDashboard isLoading />;
-	}
-
-	if (projectQuery.isError || !project) {
-		return <ProjectDashboard error={getErrorMessage(projectQuery.error)} onRetry={() => void projectQuery.refetch()} />;
-	}
 
 	if (result || status === "queued" || status === "running" || status === "failed") {
 		return (

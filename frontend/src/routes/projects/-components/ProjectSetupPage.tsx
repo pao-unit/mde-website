@@ -1,13 +1,14 @@
 import { Button, Field, Flex, Grid, Input, SegmentGroup, Stack, Text } from "@chakra-ui/react";
 import type { FormEvent, ReactNode } from "react";
 import LinePlot from "../../../components/LinePlot.tsx";
-import { FoldRangeSlider } from "../../../components/projects/FoldRangeSlider.tsx";
-import type { ColumnSummary, DatasetOverview } from "../../../components/projects/types.ts";
 import { ChartScrollArea } from "../../../components/ui/ChartScrollArea.tsx";
 import { ErrorState } from "../../../components/ui/ErrorState.tsx";
 import { LoadingState } from "../../../components/ui/LoadingState.tsx";
 import { Panel } from "../../../components/ui/Panel.tsx";
-import type { AnalysisBackend } from "../model/index.ts";
+import type { FoldRanges } from "../-utils/foldRanges.ts";
+import type { AnalysisBackend, ColumnSummary, DatasetOverview, ProjectSettings } from "../-utils/model.ts";
+import type { VariableRole } from "../-utils/settings.ts";
+import { FoldRangeSlider } from "./FoldRangeSlider.tsx";
 import type { ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
 import { ProjectLayoutShell } from "./ProjectLayoutShell.tsx";
 import type { RunStatus } from "./RunStatusBanner.tsx";
@@ -27,25 +28,11 @@ export interface ProjectSetupPageProps {
 	previewData?: number[] | null;
 	isPreviewLoading?: boolean;
 	previewError?: string | null;
-	targets: string[];
-	onTargetsChange: (targets: string[]) => void;
-	excludeColumns: string[];
-	onExcludeColumnsChange: (columns: string[]) => void;
-	backend: AnalysisBackend;
+	settings: ProjectSettings;
+	onSettingsChange: (settings: ProjectSettings) => void;
 	onBackendChange: (backend: AnalysisBackend) => void;
-	maxVariables: number;
-	onMaxVariablesChange: (value: number) => void;
-	prefilterThreshold: number;
-	onPrefilterThresholdChange: (value: number) => void;
+	onVariableRoleChange: (column: string, role: VariableRole) => void;
 	totalPoints?: number;
-	libraryRange: [number, number];
-	onLibraryRangeChange: (range: [number, number]) => void;
-	predictionRange: [number, number];
-	onPredictionRangeChange: (range: [number, number]) => void;
-	holdoutRange: [number, number];
-	onHoldoutRangeChange: (range: [number, number]) => void;
-	seed: number;
-	onSeedChange: (value: number) => void;
 	onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
 	isSubmitting?: boolean;
 	formError?: ReactNode;
@@ -55,6 +42,7 @@ export interface ProjectSetupPageProps {
 	headerActions?: ReactNode;
 	secondaryAction?: ReactNode;
 	onStepSelect?: (step: ProjectWorkflowStepId) => void;
+	completedSteps?: ProjectWorkflowStepId[];
 }
 
 export function ProjectSetupPage({
@@ -70,25 +58,11 @@ export function ProjectSetupPage({
 	previewData,
 	isPreviewLoading = false,
 	previewError,
-	targets,
-	onTargetsChange,
-	excludeColumns,
-	onExcludeColumnsChange,
-	backend,
+	settings,
+	onSettingsChange,
 	onBackendChange,
-	maxVariables,
-	onMaxVariablesChange,
-	prefilterThreshold,
-	onPrefilterThresholdChange,
+	onVariableRoleChange,
 	totalPoints,
-	libraryRange,
-	onLibraryRangeChange,
-	predictionRange,
-	onPredictionRangeChange,
-	holdoutRange,
-	onHoldoutRangeChange,
-	seed,
-	onSeedChange,
 	onSubmit,
 	isSubmitting = false,
 	formError,
@@ -98,10 +72,11 @@ export function ProjectSetupPage({
 	headerActions,
 	secondaryAction,
 	onStepSelect,
+	completedSteps,
 }: ProjectSetupPageProps) {
 	const datasetColumns = columns ?? dataset?.columns ?? [];
 	const pointCount = totalPoints ?? dataset?.pointCount ?? 0;
-	const disabled = submitDisabled ?? (targets.length === 0 || !onSubmit);
+	const disabled = submitDisabled ?? (settings.targets.length === 0 || !onSubmit);
 
 	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
 		if (!onSubmit) {
@@ -119,6 +94,7 @@ export function ProjectSetupPage({
 			activeStep="settings"
 			actions={headerActions}
 			onStepSelect={onStepSelect}
+			completedSteps={completedSteps}
 			statusBanner={<RunStatusBanner status={status} secondaryAction={secondaryAction} />}
 		>
 			<form onSubmit={handleSubmit}>
@@ -126,10 +102,8 @@ export function ProjectSetupPage({
 					<Stack gap={6} minW={0}>
 						<VariableRoleTable
 							columns={datasetColumns}
-							targets={targets}
-							excludedColumns={excludeColumns}
-							onTargetsChange={onTargetsChange}
-							onExcludedColumnsChange={onExcludeColumnsChange}
+							settings={settings}
+							onRoleChange={onVariableRoleChange}
 							selectedVariable={selectedVariable}
 							onSelectVariable={onSelectVariable}
 							isLoading={isDatasetLoading}
@@ -140,21 +114,10 @@ export function ProjectSetupPage({
 
 					<Stack gap={6} minW={0}>
 						<RunParametersPanel
-							backend={backend}
+							settings={settings}
+							onSettingsChange={onSettingsChange}
 							onBackendChange={onBackendChange}
 							totalPoints={pointCount}
-							maxVariables={maxVariables}
-							onMaxVariablesChange={onMaxVariablesChange}
-							prefilterThreshold={prefilterThreshold}
-							onPrefilterThresholdChange={onPrefilterThresholdChange}
-							libraryRange={libraryRange}
-							onLibraryRangeChange={onLibraryRangeChange}
-							predictionRange={predictionRange}
-							onPredictionRangeChange={onPredictionRangeChange}
-							holdoutRange={holdoutRange}
-							onHoldoutRangeChange={onHoldoutRangeChange}
-							seed={seed}
-							onSeedChange={onSeedChange}
 						/>
 						<Panel>
 							<Stack gap={4}>
@@ -174,38 +137,23 @@ export function ProjectSetupPage({
 }
 
 function RunParametersPanel({
-	backend,
+	settings,
+	onSettingsChange,
 	onBackendChange,
 	totalPoints,
-	maxVariables,
-	onMaxVariablesChange,
-	prefilterThreshold,
-	onPrefilterThresholdChange,
-	libraryRange,
-	onLibraryRangeChange,
-	predictionRange,
-	onPredictionRangeChange,
-	holdoutRange,
-	onHoldoutRangeChange,
-	seed,
-	onSeedChange,
 }: {
-	backend: AnalysisBackend;
+	settings: ProjectSettings;
+	onSettingsChange: (settings: ProjectSettings) => void;
 	onBackendChange: (backend: AnalysisBackend) => void;
 	totalPoints: number;
-	maxVariables: number;
-	onMaxVariablesChange: (value: number) => void;
-	prefilterThreshold: number;
-	onPrefilterThresholdChange: (value: number) => void;
-	libraryRange: [number, number];
-	onLibraryRangeChange: (range: [number, number]) => void;
-	predictionRange: [number, number];
-	onPredictionRangeChange: (range: [number, number]) => void;
-	holdoutRange: [number, number];
-	onHoldoutRangeChange: (range: [number, number]) => void;
-	seed: number;
-	onSeedChange: (value: number) => void;
 }) {
+	const backend = settings.backend ?? "edmkit";
+	const ranges: FoldRanges = {
+		libraryRange: settings.libraryRange,
+		predictionRange: settings.predictionRange,
+		holdoutRange: settings.holdoutRange,
+	};
+
 	return (
 		<Panel
 			eyebrow="Settings"
@@ -240,10 +188,10 @@ function RunParametersPanel({
 					<Input
 						type="number"
 						min={1}
-						value={Number.isFinite(maxVariables) ? maxVariables : ""}
+						value={Number.isFinite(settings.maxVariables) ? settings.maxVariables : ""}
 						onChange={(event) => {
 							const value = Number.parseInt(event.target.value, 10);
-							onMaxVariablesChange(Number.isNaN(value) ? 1 : Math.max(1, value));
+							onSettingsChange({ ...settings, maxVariables: Number.isNaN(value) ? 1 : Math.max(1, value) });
 						}}
 					/>
 				</Field.Root>
@@ -255,19 +203,18 @@ function RunParametersPanel({
 						min={0}
 						max={1}
 						step={0.01}
-						value={Number.isFinite(prefilterThreshold) ? prefilterThreshold : ""}
+						value={Number.isFinite(settings.prefilterThreshold) ? settings.prefilterThreshold : ""}
 						onChange={(event) => {
 							const raw = event.target.value;
 							if (raw === "") {
-								onPrefilterThresholdChange(0);
+								onSettingsChange({ ...settings, prefilterThreshold: 0 });
 								return;
 							}
 							const value = Number.parseFloat(raw);
-							if (Number.isNaN(value)) {
-								onPrefilterThresholdChange(0);
-								return;
-							}
-							onPrefilterThresholdChange(Math.min(1, Math.max(0, value)));
+							onSettingsChange({
+								...settings,
+								prefilterThreshold: Number.isNaN(value) ? 0 : Math.min(1, Math.max(0, value)),
+							});
 						}}
 					/>
 					<Field.HelperText>
@@ -281,12 +228,8 @@ function RunParametersPanel({
 					{totalPoints > 0 ? (
 						<FoldRangeSlider
 							totalPoints={totalPoints}
-							libraryRange={libraryRange}
-							onLibraryRangeChange={onLibraryRangeChange}
-							predictionRange={predictionRange}
-							onPredictionRangeChange={onPredictionRangeChange}
-							holdoutRange={holdoutRange}
-							onHoldoutRangeChange={onHoldoutRangeChange}
+							ranges={ranges}
+							onRangesChange={(nextRanges) => onSettingsChange({ ...settings, ...nextRanges })}
 						/>
 					) : (
 						<Text color="fg.muted">Fold ranges are available after the dataset summary loads.</Text>
@@ -297,10 +240,10 @@ function RunParametersPanel({
 					<Field.Label>Random seed</Field.Label>
 					<Input
 						type="number"
-						value={seed}
+						value={settings.seed}
 						onChange={(event) => {
 							const value = Number.parseInt(event.target.value, 10);
-							onSeedChange(Number.isNaN(value) ? 0 : value);
+							onSettingsChange({ ...settings, seed: Number.isNaN(value) ? 0 : value });
 						}}
 					/>
 				</Field.Root>
