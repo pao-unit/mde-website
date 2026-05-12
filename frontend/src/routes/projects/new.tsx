@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import { NewProjectPage } from "./-components/index.ts";
 import { useCreateProject } from "./-hooks/mutations.ts";
 import { getErrorMessage } from "../../shared/api/client.ts";
@@ -10,7 +9,6 @@ export const Route = createFileRoute("/projects/new")({
 
 function RouteComponent() {
 	const navigate = Route.useNavigate();
-	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
 	const createProject = useCreateProject({
 		onSuccess(project) {
@@ -23,11 +21,8 @@ function RouteComponent() {
 
 	return (
 		<NewProjectPage
-			selectedFile={selectedFile}
-			onFileChange={setSelectedFile}
-			isSubmitting={createProject.isPending}
 			error={createProject.error ? getErrorMessage(createProject.error) : null}
-			onSubmit={(file) => createProject.mutate({ file })}
+			onSubmit={(file) => createProject.mutateAsync({ file })}
 		/>
 	);
 }

@@ -1,19 +1,21 @@
+import { Grid, Stack, Text } from "@chakra-ui/react";
+import { useStore } from "@tanstack/react-form";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import type { FormEvent } from "react";
-import { useState } from "react";
-import { ProjectSetupPage, type ProjectWorkflowStepId, type RunStatus } from "../-components/index.ts";
+import {
+	ProjectSettingsFormFields,
+	ProjectSetupPage,
+	VariableRoleTable,
+	type ProjectWorkflowStepId,
+	type RunStatus,
+} from "../-components/index.ts";
+import { createAnalysisSettingsSchema } from "../-forms/settingsSchema.ts";
+import { useAppForm } from "../-forms/projectForm.tsx";
 import { useRunAnalysis } from "../-hooks/mutations.ts";
 import { getDefaultFoldRanges } from "../-utils/foldRanges.ts";
-import type { AnalysisBackend, ColumnSummary, DatasetOverview, ProjectSettings } from "../-utils/model.ts";
-import {
-	assignVariableRole,
-	initSettings,
-	sanitizeSettings,
-	setBackend,
-	validateSettings,
-	type VariableRole,
-} from "../-utils/settings.ts";
+import type { ColumnSummary, ProjectSettings } from "../-utils/model.ts";
+import { initSettings } from "../-utils/settings.ts";
+import { Panel } from "../../../components/ui/Panel.tsx";
 import { $api, getErrorMessage } from "../../../shared/api/client.ts";
 
 export const Route = createFileRoute("/projects/$projectId/settings")({
@@ -99,20 +101,9 @@ function SettingsPage() {
 	if (totalPoints <= 0 || columnNames.length === 0) {
 		const settings = initSettings(null, { columnNames, defaultRanges, totalPoints });
 		return (
-			<ProjectSetupPage
-				filename={project.filename}
-				dataset={dataset}
-				columns={columns}
-				settings={settings}
-				onSettingsChange={noop}
-				onBackendChange={noop}
-				onVariableRoleChange={noop}
-				totalPoints={totalPoints}
-				submitDisabled
-				status={status}
-				onStepSelect={goToStep}
-				completedSteps={completedSteps}
-			/>
+			<ProjectSetupPage filename={project.filename} status={status} onStepSelect={goToStep} completedSteps={completedSteps}>
+				<SettingsUnavailableContent columns={columns} settings={settings} />
+			</ProjectSetupPage>
 		);
 	}
 
@@ -125,7 +116,6 @@ function SettingsPage() {
 			totalPoints={totalPoints}
 			latestSettings={latestSettings}
 			filename={project.filename}
-			dataset={dataset}
 			initialVariable={variable}
 			navigate={navigate}
 			status={status}
@@ -142,7 +132,6 @@ interface SettingsFormProps {
 	totalPoints: number;
 	latestSettings: ProjectSettings | null;
 	filename: string;
-	dataset: DatasetOverview;
 	initialVariable?: string;
 	navigate: SettingsNavigate;
 	status: RunStatus;
@@ -157,7 +146,6 @@ function SettingsForm({
 	totalPoints,
 	latestSettings,
 	filename,
-	dataset,
 	initialVariable,
 	navigate,
 	status,
@@ -166,10 +154,27 @@ function SettingsForm({
 }: SettingsFormProps) {
 	const defaultRanges = getDefaultFoldRanges(totalPoints);
 	const settingsOptions = { columnNames, defaultRanges, totalPoints };
-	const [settings, setSettings] = useState(() => initSettings(latestSettings, settingsOptions));
+	const runAnalysis = useRunAnalysis(projectId, {
+		columnNames,
+		defaultRanges,
+		totalPoints,
+		onSuccess() {
+			void navigate({ to: "/projects/$projectId", params: { projectId }, replace: true });
+		},
+	});
+	const form = useAppForm({
+		defaultValues: initSettings(latestSettings, settingsOptions),
+		validators: {
+			onChange: createAnalysisSettingsSchema({ columnNames, totalPoints }),
+		},
+		onSubmit: async ({ value }) => {
+			await runAnalysis.mutateAsync(value);
+		},
+	});
+	const targets = useStore(form.store, (state) => state.values.targets);
 
 	const selectedVariable =
-		initialVariable && columnNames.includes(initialVariable) ? initialVariable : (settings.targets[0] ?? columnNames[0] ?? null);
+		initialVariable && columnNames.includes(initialVariable) ? initialVariable : (targets[0] ?? columnNames[0] ?? null);
 	const selectedVariables = selectedVariable ? [selectedVariable] : [];
 	const variablesQuery = useQuery(
 		$api.queryOptions(
@@ -188,27 +193,6 @@ function SettingsForm({
 		),
 	);
 
-	const runAnalysis = useRunAnalysis(projectId, {
-		columnNames,
-		defaultRanges,
-		totalPoints,
-		onSuccess() {
-			void navigate({ to: "/projects/$projectId", params: { projectId }, replace: true });
-		},
-	});
-
-	const commitSettings = (nextSettings: ProjectSettings) => {
-		setSettings(sanitizeSettings(nextSettings, settingsOptions));
-	};
-
-	const handleBackendChange = (backend: AnalysisBackend) => {
-		setSettings((current) => setBackend(current, backend, { columnNames }));
-	};
-
-	const handleVariableRoleChange = (column: string, role: VariableRole) => {
-		setSettings((current) => assignVariableRole(current, column, role, { columnNames }));
-	};
-
 	const handleSelectVariable = (nextVariable: string) => {
 		void navigate({
 			to: "/projects/$projectId/settings",
@@ -218,39 +202,47 @@ function SettingsForm({
 		});
 	};
 
-	const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		runAnalysis.mutate(settings);
-	};
-
 	const previewSeries = selectedVariable ? (variablesQuery.data?.[selectedVariable] ?? []).filter(isFiniteNumber) : [];
 	const previewError = variablesQuery.isError ? getErrorMessage(variablesQuery.error) : null;
 	const formError = runAnalysis.error ? getErrorMessage(runAnalysis.error) : null;
-	const validationIssues = validateSettings(settings, { columnNames, totalPoints });
 
 	return (
-		<ProjectSetupPage
-			filename={filename}
-			dataset={dataset}
-			columns={columns}
-			selectedVariable={selectedVariable}
-			onSelectVariable={handleSelectVariable}
-			previewData={previewSeries}
-			isPreviewLoading={variablesQuery.isPending}
-			previewError={previewError}
-			settings={settings}
-			onSettingsChange={commitSettings}
-			onBackendChange={handleBackendChange}
-			onVariableRoleChange={handleVariableRoleChange}
-			totalPoints={totalPoints}
-			onSubmit={handleSubmit}
-			isSubmitting={runAnalysis.isPending}
-			formError={formError}
-			submitDisabled={validationIssues.length > 0 || runAnalysis.isPending}
-			status={status}
-			onStepSelect={onStepSelect}
-			completedSteps={completedSteps}
-		/>
+		<ProjectSetupPage filename={filename} status={status} onStepSelect={onStepSelect} completedSteps={completedSteps}>
+			<form
+				onSubmit={(event) => {
+					event.preventDefault();
+					event.stopPropagation();
+					void form.handleSubmit();
+				}}
+			>
+				<ProjectSettingsFormFields
+					form={form}
+					columns={columns}
+					columnNames={columnNames}
+					selectedVariable={selectedVariable}
+					onSelectVariable={handleSelectVariable}
+					previewData={previewSeries}
+					isPreviewLoading={variablesQuery.isPending}
+					previewError={previewError}
+					totalPoints={totalPoints}
+					runError={formError}
+				/>
+			</form>
+		</ProjectSetupPage>
+	);
+}
+
+function SettingsUnavailableContent({ columns, settings }: { columns: ColumnSummary[]; settings: ProjectSettings }) {
+	return (
+		<Grid templateColumns={{ base: "1fr", xl: "minmax(0, 1fr) 380px" }} gap={6} alignItems="start">
+			<VariableRoleTable columns={columns} settings={settings} onRoleChange={noop} />
+			<Panel>
+				<Stack gap={2}>
+					<Text fontWeight="semibold">Dataset is not ready for analysis</Text>
+					<Text color="fg.muted">Analysis settings require at least one variable and one data point.</Text>
+				</Stack>
+			</Panel>
+		</Grid>
 	);
 }
 

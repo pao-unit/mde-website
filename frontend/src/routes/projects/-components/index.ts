@@ -4,6 +4,7 @@ export { ProjectDashboard } from "./ProjectDashboard.tsx";
 export type { ProjectWorkflowStep, ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
 export { ProjectLayoutShell } from "./ProjectLayoutShell.tsx";
 export { ProjectResultsPage } from "./ProjectResultsPage.tsx";
+export { ProjectSettingsFormFields } from "./ProjectSettingsForm.tsx";
 export { ProjectSetupPage } from "./ProjectSetupPage.tsx";
 export type { RunStatus } from "./RunStatusBanner.tsx";
 export { RunStatusBanner } from "./RunStatusBanner.tsx";
