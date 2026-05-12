@@ -16,7 +16,7 @@ function App() {
 			<Stack gap={6}>
 				<PageHeader
 					title="MDE projects"
-					description="Upload datasets, configure EDMKit Search runs, and inspect holdout prediction skill."
+					description="Upload datasets, configure edmkit Search runs, and inspect holdout prediction skill."
 					actions={
 						<Button asChild colorPalette="blue">
 							<RouterLink to="/projects/new">New project</RouterLink>

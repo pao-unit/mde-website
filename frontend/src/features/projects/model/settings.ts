@@ -9,16 +9,18 @@ import {
 } from "./foldRanges.ts";
 
 export type ProjectSettings = components["schemas"]["AnalysisSettings"];
+export type AnalysisBackend = NonNullable<ProjectSettings["backend"]>;
 
 export type PointRangeDraft =
 	| PointRange
 	| readonly [number | string | null | undefined, number | string | null | undefined]
 	| {
-			start?: number | string | null;
-			end?: number | string | null;
-	  };
+		start?: number | string | null;
+		end?: number | string | null;
+	};
 
 export type SettingsDraft = {
+	backend?: string | null;
 	targets?: readonly string[] | null;
 	excludeColumns?: readonly string[] | null;
 	maxVariables?: number | string | null;
@@ -43,6 +45,8 @@ export type SettingsValidationIssue = {
 export const DEFAULT_MAX_VARIABLES = 6;
 export const DEFAULT_SEED = 0;
 export const DEFAULT_PREFILTER_THRESHOLD = 0;
+export const DEFAULT_ANALYSIS_BACKEND: AnalysisBackend = "dimx";
+export const ANALYSIS_BACKENDS = ["edmkit", "dimx"] as const satisfies readonly AnalysisBackend[];
 export const PREFILTER_THRESHOLD_MIN = 0;
 export const PREFILTER_THRESHOLD_MAX = 1;
 
@@ -67,6 +71,7 @@ export function sanitizeSettingsDraft(
 	const totalPoints = options.totalPoints ?? 0;
 
 	return {
+		backend: coerceAnalysisBackend(draft.backend),
 		targets,
 		excludeColumns,
 		maxVariables: coercePositiveInteger(draft.maxVariables, DEFAULT_MAX_VARIABLES),
@@ -87,6 +92,9 @@ export function validateProjectSettings(
 
 	if (settings.targets.length === 0) {
 		issues.push({ field: "targets", message: "Select at least one target column." });
+	}
+	if (settings.backend === "dimx" && settings.targets.length !== 1) {
+		issues.push({ field: "targets", message: "dimx backend supports exactly one target column." });
 	}
 
 	for (const target of settings.targets) {
@@ -219,6 +227,10 @@ function coercePrefilterThreshold(value: number | string | null | undefined): nu
 	if (parsed < PREFILTER_THRESHOLD_MIN) return PREFILTER_THRESHOLD_MIN;
 	if (parsed > PREFILTER_THRESHOLD_MAX) return PREFILTER_THRESHOLD_MAX;
 	return parsed;
+}
+
+function coerceAnalysisBackend(value: string | null | undefined): AnalysisBackend {
+	return value === "dimx" || value === "edmkit" ? value : DEFAULT_ANALYSIS_BACKEND;
 }
 
 function coerceFiniteNumber(value: number | string | null | undefined, fallback: number): number {

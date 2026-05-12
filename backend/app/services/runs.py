@@ -109,6 +109,12 @@ def validate_analysis_settings(
             detail=f"Columns cannot be both target and excluded: {', '.join(overlap)}",
         )
 
+    if settings.backend == "dimx" and len(settings.targets) != 1:
+        raise HTTPException(
+            status_code=400,
+            detail="dimx backend supports exactly one target column",
+        )
+
     missing_targets = [column for column in settings.targets if column not in df.columns]
     if missing_targets:
         raise HTTPException(

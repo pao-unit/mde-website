@@ -1,4 +1,4 @@
-import { Button, Field, Flex, Grid, Input, Stack, Text } from "@chakra-ui/react";
+import { Button, Field, Flex, Grid, Input, SegmentGroup, Stack, Text } from "@chakra-ui/react";
 import type { FormEvent, ReactNode } from "react";
 import LinePlot from "../../../components/LinePlot.tsx";
 import { FoldRangeSlider } from "../../../components/projects/FoldRangeSlider.tsx";
@@ -7,6 +7,7 @@ import { ChartScrollArea } from "../../../components/ui/ChartScrollArea.tsx";
 import { ErrorState } from "../../../components/ui/ErrorState.tsx";
 import { LoadingState } from "../../../components/ui/LoadingState.tsx";
 import { Panel } from "../../../components/ui/Panel.tsx";
+import type { AnalysisBackend } from "../model/index.ts";
 import type { ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
 import { ProjectLayoutShell } from "./ProjectLayoutShell.tsx";
 import type { RunStatus } from "./RunStatusBanner.tsx";
@@ -30,6 +31,8 @@ export interface ProjectSetupPageProps {
 	onTargetsChange: (targets: string[]) => void;
 	excludeColumns: string[];
 	onExcludeColumnsChange: (columns: string[]) => void;
+	backend: AnalysisBackend;
+	onBackendChange: (backend: AnalysisBackend) => void;
 	maxVariables: number;
 	onMaxVariablesChange: (value: number) => void;
 	prefilterThreshold: number;
@@ -71,6 +74,8 @@ export function ProjectSetupPage({
 	onTargetsChange,
 	excludeColumns,
 	onExcludeColumnsChange,
+	backend,
+	onBackendChange,
 	maxVariables,
 	onMaxVariablesChange,
 	prefilterThreshold,
@@ -135,6 +140,8 @@ export function ProjectSetupPage({
 
 					<Stack gap={6} minW={0}>
 						<RunParametersPanel
+							backend={backend}
+							onBackendChange={onBackendChange}
 							totalPoints={pointCount}
 							maxVariables={maxVariables}
 							onMaxVariablesChange={onMaxVariablesChange}
@@ -167,6 +174,8 @@ export function ProjectSetupPage({
 }
 
 function RunParametersPanel({
+	backend,
+	onBackendChange,
 	totalPoints,
 	maxVariables,
 	onMaxVariablesChange,
@@ -181,6 +190,8 @@ function RunParametersPanel({
 	seed,
 	onSeedChange,
 }: {
+	backend: AnalysisBackend;
+	onBackendChange: (backend: AnalysisBackend) => void;
 	totalPoints: number;
 	maxVariables: number;
 	onMaxVariablesChange: (value: number) => void;
@@ -202,6 +213,28 @@ function RunParametersPanel({
 			description="Control the greedy search limit, fold layout, and reproducibility seed."
 		>
 			<Stack gap={5}>
+				<Field.Root>
+					<Field.Label>Analysis backend</Field.Label>
+					<SegmentGroup.Root
+						value={backend}
+						onValueChange={(details) => {
+							const value = details.value;
+							if (value === "edmkit" || value === "dimx") {
+								onBackendChange(value);
+							}
+						}}
+					>
+						<SegmentGroup.Indicator />
+						<SegmentGroup.Items
+							items={[
+								{ value: "dimx", label: "dimx" },
+								{ value: "edmkit", label: "edmkit" },
+							]}
+						/>
+					</SegmentGroup.Root>
+					<Field.HelperText>dimx uses the official MDE implementation and accepts one target column.</Field.HelperText>
+				</Field.Root>
+
 				<Field.Root>
 					<Field.Label>Maximum variables to select</Field.Label>
 					<Input

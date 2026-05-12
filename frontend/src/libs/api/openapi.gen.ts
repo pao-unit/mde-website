@@ -168,6 +168,13 @@ export interface components {
         /** AnalysisSettings */
         AnalysisSettings: {
             /**
+             * Backend
+             * @description Analysis implementation used for greedy variable selection
+             * @default edmkit
+             * @enum {string}
+             */
+            backend?: "edmkit" | "dimx";
+            /**
              * Targets
              * @description Target column names. Predicted jointly; auto-excluded from candidate variables.
              * @example [

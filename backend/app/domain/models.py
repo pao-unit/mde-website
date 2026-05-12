@@ -90,7 +90,15 @@ class PointRange(BaseModel):
         return self
 
 
+AnalysisBackend = Literal["edmkit", "dimx"]
+
+
 class AnalysisSettings(BaseModel):
+    backend: AnalysisBackend = Field(
+        default="edmkit",
+        description="Analysis implementation used for greedy variable selection",
+        examples=["edmkit", "dimx"],
+    )
     targets: list[str] = Field(
         min_length=1,
         description="Target column names. Predicted jointly; auto-excluded from candidate variables.",

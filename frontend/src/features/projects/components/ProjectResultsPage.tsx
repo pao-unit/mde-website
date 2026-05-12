@@ -90,6 +90,10 @@ function SettingsSummaryPanel({ filename, settings }: { filename?: string; setti
 			{settings ? (
 				<DataList.Root size="sm" colorPalette="gray">
 					<DataList.Item>
+						<DataList.ItemLabel>Backend</DataList.ItemLabel>
+						<DataList.ItemValue>{formatBackend(settings.backend)}</DataList.ItemValue>
+					</DataList.Item>
+					<DataList.Item>
 						<DataList.ItemLabel>Targets</DataList.ItemLabel>
 						<DataList.ItemValue>{settings.targets.join(", ")}</DataList.ItemValue>
 					</DataList.Item>
@@ -333,4 +337,8 @@ function SelectedVariablesPanel({ result }: { result: ProjectResult }) {
 
 function formatRange(range: PointRange) {
 	return `${range.start.toLocaleString()} - ${range.end.toLocaleString()}`;
+}
+
+function formatBackend(backend: ProjectSettings["backend"]) {
+	return backend === "dimx" ? "dimx" : "edmkit";
 }

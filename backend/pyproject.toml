@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "dimx>=1.1.3",
     "edmkit>=0.0.7",
     "edmkit-search>=0.0.1a1",
     "fastapi[standard]>=0.118.0",

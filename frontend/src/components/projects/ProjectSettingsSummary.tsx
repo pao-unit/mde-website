@@ -20,6 +20,10 @@ export function ProjectSettingsSummary({ projectId, filename, settings }: Projec
 				</Text>
 				<DataList.Root size="sm" colorPalette="gray">
 					<DataList.Item>
+						<DataList.ItemLabel>Backend</DataList.ItemLabel>
+						<DataList.ItemValue>{settings.backend === "dimx" ? "dimx" : "edmkit"}</DataList.ItemValue>
+					</DataList.Item>
+					<DataList.Item>
 						<DataList.ItemLabel>Targets</DataList.ItemLabel>
 						<DataList.ItemValue>{settings.targets.join(", ")}</DataList.ItemValue>
 					</DataList.Item>
