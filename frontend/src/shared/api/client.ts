@@ -2,7 +2,7 @@ import createFetchClient from "openapi-fetch";
 import createClient from "openapi-react-query";
 import type { paths } from "../../libs/api/openapi.gen.ts";
 
-export const apiBaseUrl = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL ?? "");
+const apiBaseUrl = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL ?? "");
 
 export const fetchClient = createFetchClient<paths>({
 	baseUrl: apiBaseUrl,

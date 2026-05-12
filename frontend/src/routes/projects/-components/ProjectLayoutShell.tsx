@@ -4,7 +4,7 @@ import { PageHeader } from "../../../components/ui/PageHeader.tsx";
 
 export type ProjectWorkflowStepId = "dataset" | "settings" | "run" | "results";
 
-export interface ProjectWorkflowStep {
+interface ProjectWorkflowStep {
 	id: ProjectWorkflowStepId;
 	label: string;
 	description?: string;

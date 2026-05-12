@@ -1,12 +1,8 @@
 export { NewProjectPage } from "./NewProjectPage.tsx";
-export { FoldRangeSlider } from "./FoldRangeSlider.tsx";
 export { ProjectDashboard } from "./ProjectDashboard.tsx";
-export type { ProjectWorkflowStep, ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
-export { ProjectLayoutShell } from "./ProjectLayoutShell.tsx";
+export type { ProjectWorkflowStepId } from "./ProjectLayoutShell.tsx";
 export { ProjectResultsPage } from "./ProjectResultsPage.tsx";
 export { ProjectSettingsFormFields } from "./ProjectSettingsForm.tsx";
 export { ProjectSetupPage } from "./ProjectSetupPage.tsx";
 export type { RunStatus } from "./RunStatusBanner.tsx";
-export { RunStatusBanner } from "./RunStatusBanner.tsx";
-export type { VariableRole } from "../-utils/settings.ts";
 export { VariableRoleTable } from "./VariableRoleTable.tsx";

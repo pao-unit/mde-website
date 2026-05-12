@@ -1,4 +1,5 @@
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -8,11 +9,8 @@ export default defineConfig({
 	plugins: [
 		Icons({ compiler: "jsx", jsx: "react" }),
 		tanstackRouter({ target: "react", autoCodeSplitting: true }),
-		react({
-			babel: {
-				plugins: ["babel-plugin-react-compiler"],
-			},
-		}),
+		react(),
+		babel({ presets: [reactCompilerPreset()] }),
 	],
 	server: {
 		proxy: {

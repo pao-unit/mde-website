@@ -24,7 +24,7 @@ export type PointRangeDraft =
 			end?: number | string | null;
 	  };
 
-export const DEFAULT_POINT_RANGE: PointRange = { start: 1, end: 1 };
+const DEFAULT_POINT_RANGE: PointRange = { start: 1, end: 1 };
 
 export function getDefaultFoldRanges(totalPoints: number): FoldRanges {
 	const pointCount = Math.max(0, Math.floor(Number.isFinite(totalPoints) ? totalPoints : 0));

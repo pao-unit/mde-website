@@ -5,9 +5,9 @@ import type { ComponentProps, ReactNode } from "react";
 import type { AnalysisBackend } from "../-utils/model.ts";
 import { ANALYSIS_BACKENDS, DEFAULT_ANALYSIS_BACKEND } from "../-utils/settings.ts";
 
-export const { fieldContext, formContext, useFieldContext, useFormContext } = createFormHookContexts();
+const { fieldContext, formContext, useFieldContext, useFormContext } = createFormHookContexts();
 
-export interface NumberInputFieldProps {
+interface NumberInputFieldProps {
 	label: ReactNode;
 	helperText?: ReactNode;
 	min?: number;
@@ -15,7 +15,7 @@ export interface NumberInputFieldProps {
 	step?: number;
 }
 
-export function NumberInputField({ label, helperText, min, max, step }: NumberInputFieldProps) {
+function NumberInputField({ label, helperText, min, max, step }: NumberInputFieldProps) {
 	const field = useFieldContext<number>();
 	const value = Number.isFinite(field.state.value) ? String(field.state.value) : "";
 	const errors = getFieldErrorMessages(field);
@@ -39,7 +39,7 @@ export function NumberInputField({ label, helperText, min, max, step }: NumberIn
 	);
 }
 
-export function BackendSegmentField() {
+function BackendSegmentField() {
 	const field = useFieldContext<AnalysisBackend | undefined>();
 	const value = field.state.value ?? DEFAULT_ANALYSIS_BACKEND;
 	const errors = getFieldErrorMessages(field);
@@ -70,13 +70,13 @@ export function BackendSegmentField() {
 	);
 }
 
-export interface DatasetFileFieldProps {
+interface DatasetFileFieldProps {
 	label: ReactNode;
 	helperText?: ReactNode;
 	acceptedFileTypes: string[];
 }
 
-export function DatasetFileField({ label, helperText, acceptedFileTypes }: DatasetFileFieldProps) {
+function DatasetFileField({ label, helperText, acceptedFileTypes }: DatasetFileFieldProps) {
 	const field = useFieldContext<File | null>();
 	const file = field.state.value;
 	const files = file ? [file] : [];
@@ -123,7 +123,7 @@ interface SubmitButtonProps extends Omit<ComponentProps<typeof Button>, "type"> 
 	requireDirty?: boolean;
 }
 
-export function SubmitButton({ children, disabled, loading, requireDirty = false, ...buttonProps }: SubmitButtonProps) {
+function SubmitButton({ children, disabled, loading, requireDirty = false, ...buttonProps }: SubmitButtonProps) {
 	const form = useFormContext();
 
 	return (
@@ -142,7 +142,7 @@ export function SubmitButton({ children, disabled, loading, requireDirty = false
 	);
 }
 
-export function FieldErrorText({ field }: { field: AnyFieldApi }) {
+function FieldErrorText({ field }: { field: AnyFieldApi }) {
 	const messages = getFieldErrorMessages(field);
 
 	if (!field.state.meta.isTouched || messages.length === 0) {
@@ -152,7 +152,7 @@ export function FieldErrorText({ field }: { field: AnyFieldApi }) {
 	return <Field.ErrorText>{messages.join(", ")}</Field.ErrorText>;
 }
 
-export function getFieldErrorMessages(field: Pick<AnyFieldApi, "state">): string[] {
+function getFieldErrorMessages(field: Pick<AnyFieldApi, "state">): string[] {
 	return field.state.meta.errors.map(getValidationMessage).filter((message): message is string => Boolean(message));
 }
 
@@ -175,7 +175,7 @@ function isAnalysisBackend(value: unknown): value is AnalysisBackend {
 	return ANALYSIS_BACKENDS.some((backend) => backend === value);
 }
 
-export const { useAppForm, withForm, withFieldGroup } = createFormHook({
+export const { useAppForm, withForm } = createFormHook({
 	fieldContext,
 	formContext,
 	fieldComponents: {

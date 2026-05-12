@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { useId } from "react";
 
-export interface Series {
+interface Series {
 	name: string;
 	color: string;
 	data: number[];
